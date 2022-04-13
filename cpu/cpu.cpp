@@ -33,7 +33,7 @@ uint8_t fetch(struct cpu* emu_cpu)
 void debug(struct cpu* emu_cpu)
 {
   int i;
-  printf("------------------\n");
+  printf("-------------------\n");
   printf("A : 0x%04x\n", emu_cpu->reg_A);
   printf("X : 0x%04x\n", emu_cpu->reg_X);
   printf("Y : 0x%04x\n", emu_cpu->reg_Y);
@@ -47,6 +47,18 @@ void debug(struct cpu* emu_cpu)
     }
   }
   puts("");
+}
+
+void dump(struct cpu* emu_cpu, uint16_t addr, int32_t size)
+{
+  int l,i;
+  printf("--- memory dump ---\n");
+  for(l = 0; l < size; l+=8){
+    printf("[0x%04x]: ", addr+l);
+    for(i = 0; i+l < size && i < 8; i++)
+      printf("%02x ", emu_cpu->memory[addr+i+l]);
+    puts("");
+  }
 }
 
 void set_reg_P(struct cpu* emu_cpu, uint8_t at, uint8_t val)
@@ -88,9 +100,9 @@ uint16_t get_operand(struct cpu* emu_cpu, uint8_t op)
     case AM_ZPG :
       return (uint16_t)fetch(emu_cpu);
     case AM_ZPGX:
-      return (uint16_t)fetch(emu_cpu) + (uint16_t)emu_cpu->reg_X;
+      return (uint8_t)(fetch(emu_cpu) + emu_cpu->reg_X);
     case AM_ZPGY:
-      return (uint16_t)fetch(emu_cpu) + (uint16_t)emu_cpu->reg_Y;
+      return (uint8_t)(fetch(emu_cpu) + emu_cpu->reg_Y);
     case AM_ABS :
       lower = fetch(emu_cpu);
       upper = (uint16_t)fetch(emu_cpu) << 8;
@@ -98,23 +110,23 @@ uint16_t get_operand(struct cpu* emu_cpu, uint8_t op)
     case AM_ABSX:
       lower = fetch(emu_cpu);
       upper = (uint16_t)fetch(emu_cpu) << 8;
-      return (lower | upper) + (int16_t)emu_cpu->reg_X;
+      return (lower | upper) + (uint16_t)emu_cpu->reg_X;
+      //return (int16_t)(lower | upper) + (int8_t)emu_cpu->reg_X;
     case AM_ABSY:
       lower = fetch(emu_cpu);
       upper = (uint16_t)fetch(emu_cpu) << 8;
-      return (lower | upper) + (int16_t)emu_cpu->reg_Y;
+      return (lower | upper) + (uint16_t)emu_cpu->reg_Y;
+      //return (int16_t)(lower | upper) + (int8_t)emu_cpu->reg_Y;
     case AM_REL :
       // TODO debug
       tmp_pc = emu_cpu->reg_PC;
       return tmp_pc + (int16_t)fetch(emu_cpu);
     case AM_XIND:
-      // TODO debug
-      tmp_pc = (uint16_t)fetch(emu_cpu) + (uint16_t)emu_cpu->reg_X;
-      return ((uint16_t*)&(emu_cpu->memory))[tmp_pc];
+      tmp_pc = (uint8_t)(fetch(emu_cpu) + emu_cpu->reg_X);
+      return *(uint16_t*)&(emu_cpu->memory[tmp_pc]);
     case AM_INDY:
-      // TODO debug
       tmp_pc = (uint16_t)fetch(emu_cpu);
-      return ((uint16_t*)&(emu_cpu->memory))[tmp_pc] + (int16_t)emu_cpu->reg_Y;
+      return *(uint16_t*)&(emu_cpu->memory[tmp_pc]) + (uint16_t)emu_cpu->reg_Y;
     case AM_IND :
       lower = fetch(emu_cpu);
       upper = (uint16_t)fetch(emu_cpu) << 8;
@@ -229,7 +241,8 @@ void run(struct cpu* emu_cpu)
   
   puts("execution");
   
-  for(tmp = 0; tmp < 10; tmp++){
+  for(tmp = 0; tmp < 2; tmp++){
+    debug(emu_cpu);
     op = fetch(emu_cpu);
     operand = get_operand(emu_cpu, op);
     exec(emu_cpu, op, operand);
