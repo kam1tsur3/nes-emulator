@@ -30,62 +30,78 @@ uint8_t fetch(struct cpu* emu_cpu)
   return emu_cpu->memory[emu_cpu->reg_PC++];
 }
 
-void debug(struct cpu* emu_cpu)
+uint8_t get_status_at(struct cpu* emu_cpu, uint8_t at)
 {
-  int i;
-  printf("-------------------\n");
-  printf("A : 0x%04x\n", emu_cpu->reg_A);
-  printf("X : 0x%04x\n", emu_cpu->reg_X);
-  printf("Y : 0x%04x\n", emu_cpu->reg_Y);
-  printf("SP: 0x%04x\n", emu_cpu->reg_SP);
-  printf("P : 0x%04x\n", emu_cpu->reg_P);
-  printf("PC: 0x%04x\n", emu_cpu->reg_PC);
-  printf("STATUS: | ");
-  for(i = 0; i < 8; i++){
-    if(emu_cpu->reg_P & (1<<i)){
-      printf("%s | ", status_str[i]);
-    }
-  }
-  puts("");
+  if((emu_cpu->reg_P & (1 << at)) != 0) 
+    return 1;
+  else
+    return 0;
 }
 
-void dump(struct cpu* emu_cpu, uint16_t addr, int32_t size)
-{
-  int l,i;
-  printf("--- memory dump ---\n");
-  for(l = 0; l < size; l+=8){
-    printf("[0x%04x]: ", addr+l);
-    for(i = 0; i+l < size && i < 8; i++)
-      printf("%02x ", emu_cpu->memory[addr+i+l]);
-    puts("");
-  }
-}
-
+// TODO none sense
 void set_reg_P(struct cpu* emu_cpu, uint8_t at, uint8_t val)
 {
   uint8_t set, unset;
+  bool flag;
   set = (1<<at);
   unset = (0xff ^ set);
+  flag = false;
   switch(at) {
     case STATUS_N:
       if(val & 0x80)
-        emu_cpu->reg_P |= set;
-      else  
-        emu_cpu->reg_P &= unset;
+        flag = true;
       break;
-    case STATUS_V:
+    case STATUS_Z:
+      if(val == 0)
+        flag = true;
+      break;
     case STATUS_B:
     case STATUS_D:
     case STATUS_I:
-    case STATUS_Z:
-      if(val == 0)
-        emu_cpu->reg_P |= set;
-      else  
-        emu_cpu->reg_P &= unset;
-      break;
+    case STATUS_V:
     case STATUS_C:
+      if(val)
+        flag = true;
       break;
   }
+  if(flag)
+    emu_cpu->reg_P |= set;
+  else
+    emu_cpu->reg_P &= unset;
+}
+void set_carry(struct cpu* emu_cpu, uint16_t val)
+{
+  if(val > 0xff)
+    set_reg_P(emu_cpu, STATUS_C, 1);
+  else
+    set_reg_P(emu_cpu, STATUS_C, 0);
+}
+
+void set_overflow(struct cpu* emu_cpu, uint8_t x, uint8_t y, uint8_t op)
+{
+  // TODO debug
+  uint8_t tmp;
+  uint8_t c;
+  c = get_status_at(emu_cpu, STATUS_C);
+  if(op == OP_ADC){
+    tmp = x + y + c;
+    if(((x ^ y) & 0x80) == 0 && ((tmp ^ x) & 0x80) != 0)
+      set_reg_P(emu_cpu, STATUS_V, 1);
+    else
+      set_reg_P(emu_cpu, STATUS_V, 0);
+  } 
+  else if(op == OP_SBC){
+    tmp = x - y - ((c&1) ^ 1);
+    if(((x ^ y) & 0x80) != 0 && ((tmp ^ x) & 0x80) != 0)
+      set_reg_P(emu_cpu, STATUS_V, 1);
+    else 
+      set_reg_P(emu_cpu, STATUS_V, 0);
+  }
+  else {
+    puts("[E] Error in set_overflow");
+    exit(1);
+  }
+  return;
 }
 
 uint16_t get_operand(struct cpu* emu_cpu, uint8_t op)
@@ -141,9 +157,22 @@ uint16_t get_operand(struct cpu* emu_cpu, uint8_t op)
 
 void exec(struct cpu* emu_cpu, uint8_t op, uint16_t operand)
 {
+  uint16_t result;
+  uint8_t tmp_m;
+  uint8_t tmp_a;
   switch(OPCODE[op]) {
     case OP_ADC:
-      return;
+      if(AM[op] == AM_IMMD)
+        tmp_m = operand;
+      else
+        tmp_m = emu_cpu->memory[operand];
+      result = emu_cpu->reg_A + tmp_m + get_status_at(emu_cpu, STATUS_C);
+      set_overflow(emu_cpu, emu_cpu->reg_A, tmp_m, OP_ADC); 
+      set_carry(emu_cpu, result);
+      emu_cpu->reg_A = result;
+      set_reg_P(emu_cpu, STATUS_N, emu_cpu->reg_A);
+      set_reg_P(emu_cpu, STATUS_Z, emu_cpu->reg_A);
+      break;
     case OP_SBC:
     case OP_AND:
     case OP_ORA:
@@ -216,11 +245,33 @@ void exec(struct cpu* emu_cpu, uint8_t op, uint16_t operand)
       emu_cpu->memory[operand] = emu_cpu->reg_Y;
       break;
     case OP_TAX:
+      emu_cpu->reg_X = emu_cpu->reg_A;
+      set_reg_P(emu_cpu, STATUS_N, emu_cpu->reg_X);
+      set_reg_P(emu_cpu, STATUS_Z, emu_cpu->reg_X);
+      break;
     case OP_TXA:
+      emu_cpu->reg_A = emu_cpu->reg_X;
+      set_reg_P(emu_cpu, STATUS_N, emu_cpu->reg_A);
+      set_reg_P(emu_cpu, STATUS_Z, emu_cpu->reg_A);
+      break;
     case OP_TAY:
+      emu_cpu->reg_Y = emu_cpu->reg_A;
+      set_reg_P(emu_cpu, STATUS_N, emu_cpu->reg_Y);
+      set_reg_P(emu_cpu, STATUS_Z, emu_cpu->reg_Y);
+      break;
     case OP_TYA:
+      emu_cpu->reg_A = emu_cpu->reg_Y;
+      set_reg_P(emu_cpu, STATUS_N, emu_cpu->reg_A);
+      set_reg_P(emu_cpu, STATUS_Z, emu_cpu->reg_A);
+      break;
     case OP_TSX:
+      emu_cpu->reg_X = emu_cpu->reg_SP & 0xff;
+      set_reg_P(emu_cpu, STATUS_N, emu_cpu->reg_X);
+      set_reg_P(emu_cpu, STATUS_Z, emu_cpu->reg_X);
+      break;
     case OP_TXS:
+      emu_cpu->reg_SP = emu_cpu->reg_X+0x100;
+      break;
     case OP_PHA:
     case OP_PLA:
     case OP_PHP:
@@ -246,5 +297,37 @@ void run(struct cpu* emu_cpu)
     op = fetch(emu_cpu);
     operand = get_operand(emu_cpu, op);
     exec(emu_cpu, op, operand);
+  }
+}
+
+// FUNCTIONS FOR DEBUG 
+void debug(struct cpu* emu_cpu)
+{
+  int i;
+  printf("-------------------\n");
+  printf("A : 0x%04x\n", emu_cpu->reg_A);
+  printf("X : 0x%04x\n", emu_cpu->reg_X);
+  printf("Y : 0x%04x\n", emu_cpu->reg_Y);
+  printf("SP: 0x%04x\n", emu_cpu->reg_SP);
+  printf("P : 0x%04x\n", emu_cpu->reg_P);
+  printf("PC: 0x%04x\n", emu_cpu->reg_PC);
+  printf("STATUS: | ");
+  for(i = 0; i < 8; i++){
+    if(emu_cpu->reg_P & (1<<i)){
+      printf("%s | ", status_str[i]);
+    }
+  }
+  puts("");
+}
+
+void dump(struct cpu* emu_cpu, uint16_t addr, int32_t size)
+{
+  int l,i;
+  printf("--- memory dump ---\n");
+  for(l = 0; l < size; l+=8){
+    printf("[0x%04x]: ", addr+l);
+    for(i = 0; i+l < size && i < 8; i++)
+      printf("%02x ", emu_cpu->memory[addr+i+l]);
+    puts("");
   }
 }

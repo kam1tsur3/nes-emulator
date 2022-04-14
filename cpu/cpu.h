@@ -183,8 +183,12 @@ void init_cpu(struct cpu*);
 void init_regs(struct cpu*);
 void reset(struct cpu*);
 uint8_t fetch(struct cpu*);
-void debug(struct cpu*);
-void dump(struct cpu*, uint16_t, int32_t);
+uint8_t get_status_at(struct cpu*, uint8_t);
+void set_carry(struct cpu*, uint16_t );
 void set_reg_P(struct cpu*, uint8_t, uint8_t);
+void set_overflow(struct cpu*, uint8_t, uint8_t, uint8_t);
 uint16_t get_operand(struct cpu*, uint8_t);
 void run(struct cpu*);
+
+void debug(struct cpu*);
+void dump(struct cpu*, uint16_t, int32_t);
