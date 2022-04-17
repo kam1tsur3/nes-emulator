@@ -179,16 +179,15 @@ const uint8_t OPCODE[0x100] = {
 /* 0xF8 */ OP_SED, OP_SBC, OP_UND, OP_UND, OP_UND, OP_SBC, OP_INC, OP_UND
 };
 
-void init_cpu(struct cpu*);
-void init_regs(struct cpu*);
-void reset(struct cpu*);
-uint8_t fetch(struct cpu*);
-uint8_t get_status_at(struct cpu*, uint8_t);
-void set_carry(struct cpu*, uint16_t );
-void set_reg_P(struct cpu*, uint8_t, uint8_t);
-void set_overflow(struct cpu*, uint8_t, uint8_t, uint8_t);
-uint16_t get_operand(struct cpu*, uint8_t);
-void run(struct cpu*);
+void init_cpu();
+void init_regs();
+void reset();
+uint8_t fetch();
+uint8_t get_status_at(uint8_t);
+void set_reg_P(uint8_t, bool);
+bool check_overflow(uint8_t, uint8_t, uint8_t);
+uint16_t get_operand(uint8_t);
+void run();
 
-void debug(struct cpu*);
-void dump(struct cpu*, uint16_t, int32_t);
+void debug();
+void dump(uint16_t, int32_t);

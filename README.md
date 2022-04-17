@@ -1,16 +1,14 @@
 # NES-Emulator
 
-## 命令セットのテスト
-### DONE
-LDA, LDX, LDY    
-STA, STX, STY  
-TAX, TAY, TSX, TXS, TYA, TXA
-ADD, 
-
 ### TODO
-ADC, SBCのcarry, overflowが少し不安
+ADC, SBCのcarry, overflowが少し不安  
+CMPのフラグ設定テスト
+stack命令、spの操作が先かストア/ロードが先か
+RTI
 
-### HOGE
+
+
+### MITOsan
 　　　　　　　　　　　　　　　 _,,.. -─ ニ =‐--､  
 　　　　　　　　　　　　,. ‐,7´ ,. -=＝￣　 _,,.. -｀ヽ､、  
 　　　　　　　　　__ r\'l´　! | / ／ ,. -＝\'"´-──二ﾆヽ  

@@ -1,110 +1,124 @@
 #include "../common.h"
 #include "cpu.h"
 
-void init_cpu(struct cpu* emu_cpu)
+extern struct cpu emu_cpu;
+
+void init_cpu()
 {
-  init_regs(emu_cpu);
+  init_regs();
   // for test
-  emu_cpu->memory[0xFFFC] = 0x00;
-  emu_cpu->memory[0xFFFD] = 0x80;
+  emu_cpu.memory[0xFFFC] = 0x00;
+  emu_cpu.memory[0xFFFD] = 0x80;
 }
 
-void init_regs(struct cpu* emu_cpu)
+void init_regs()
 {
-  emu_cpu->reg_A = 0;
-  emu_cpu->reg_X = 0;
-  emu_cpu->reg_Y = 0;
-  emu_cpu->reg_P = 0x34;
-  emu_cpu->reg_SP = 0x1fd;
-  emu_cpu->reg_PC = 0;
+  emu_cpu.reg_A = 0;
+  emu_cpu.reg_X = 0;
+  emu_cpu.reg_Y = 0;
+  emu_cpu.reg_P = 0x34;
+  emu_cpu.reg_SP = 0x1fd;
+  emu_cpu.reg_PC = 0;
 }
 
-void reset(struct cpu* emu_cpu)
+void reset()
 {
-  init_regs(emu_cpu);
-  emu_cpu->reg_PC = *(uint16_t*)&(emu_cpu->memory[VEC_RESET]);
+  init_regs();
+  emu_cpu.reg_PC = *(uint16_t*)&(emu_cpu.memory[VEC_RESET]);
 }
 
-uint8_t fetch(struct cpu* emu_cpu)
+uint8_t fetch()
 {
-  return emu_cpu->memory[emu_cpu->reg_PC++];
+  return emu_cpu.memory[emu_cpu.reg_PC++];
 }
 
-uint8_t get_status_at(struct cpu* emu_cpu, uint8_t at)
+uint8_t get_status_at(uint8_t at)
 {
-  if((emu_cpu->reg_P & (1 << at)) != 0) 
+  if((emu_cpu.reg_P & (1 << at)) != 0) 
     return 1;
   else
     return 0;
 }
 
-// TODO none sense
-void set_reg_P(struct cpu* emu_cpu, uint8_t at, uint8_t val)
+void set_reg_P(uint8_t at, bool tf)
 {
   uint8_t set, unset;
-  bool flag;
   set = (1<<at);
   unset = (0xff ^ set);
-  flag = false;
-  switch(at) {
-    case STATUS_N:
-      if(val & 0x80)
-        flag = true;
-      break;
-    case STATUS_Z:
-      if(val == 0)
-        flag = true;
-      break;
-    case STATUS_B:
-    case STATUS_D:
-    case STATUS_I:
-    case STATUS_V:
-    case STATUS_C:
-      if(val)
-        flag = true;
-      break;
-  }
-  if(flag)
-    emu_cpu->reg_P |= set;
+  if(tf)
+    emu_cpu.reg_P |= set;
   else
-    emu_cpu->reg_P &= unset;
-}
-void set_carry(struct cpu* emu_cpu, uint16_t val)
-{
-  if(val > 0xff)
-    set_reg_P(emu_cpu, STATUS_C, 1);
-  else
-    set_reg_P(emu_cpu, STATUS_C, 0);
+    emu_cpu.reg_P &= unset;
 }
 
-void set_overflow(struct cpu* emu_cpu, uint8_t x, uint8_t y, uint8_t op)
+bool check_carry(uint8_t x, uint8_t y, uint8_t op)
+{
+  uint16_t tmp;
+  uint8_t c;
+  c = get_status_at(STATUS_C);
+  if(op == OP_ADC){
+    tmp = x + y + c;
+    if(tmp > 0xff)
+      return true;
+    else
+      return false;  
+  }
+  else if(op == OP_SBC){
+    tmp = x + ((y^0xff) +1) - ((c&1)^1);
+    if(tmp > 0xff)
+      return true;
+    else 
+      return false;
+  } else if(op == OP_CMP || op == OP_CPX || op == OP_CPY) {
+    tmp = x + ((y^0xff) +1);
+    if(tmp > 0xff)
+      return true;
+    else 
+      return false;
+  } else {
+    ERROR("Error in check_carry");
+  }
+}
+
+bool check_overflow(uint8_t x, uint8_t y, uint8_t op)
 {
   // TODO debug
   uint8_t tmp;
   uint8_t c;
-  c = get_status_at(emu_cpu, STATUS_C);
+  c = get_status_at(STATUS_C);
   if(op == OP_ADC){
     tmp = x + y + c;
     if(((x ^ y) & 0x80) == 0 && ((tmp ^ x) & 0x80) != 0)
-      set_reg_P(emu_cpu, STATUS_V, 1);
+      return true;
     else
-      set_reg_P(emu_cpu, STATUS_V, 0);
+      return false;
   } 
   else if(op == OP_SBC){
     tmp = x - y - ((c&1) ^ 1);
     if(((x ^ y) & 0x80) != 0 && ((tmp ^ x) & 0x80) != 0)
-      set_reg_P(emu_cpu, STATUS_V, 1);
+      return true;
     else 
-      set_reg_P(emu_cpu, STATUS_V, 0);
+      return false;
   }
   else {
-    puts("[E] Error in set_overflow");
-    exit(1);
+    ERROR("Error in check_overflow");
   }
-  return;
+  return false;
 }
 
-uint16_t get_operand(struct cpu* emu_cpu, uint8_t op)
+uint8_t pop_SP()
+{
+  emu_cpu.reg_SP = ((emu_cpu.reg_SP + 1) & 0xff) | 0x100;
+  return emu_cpu.memory[emu_cpu.reg_SP];
+}
+
+void push_SP(uint8_t val)
+{
+  emu_cpu.memory[emu_cpu.reg_SP] = val;
+  emu_cpu.reg_SP = ((emu_cpu.reg_SP - 1) & 0xff) | 0x100;
+}
+
+uint16_t get_operand(uint8_t op)
 {
   uint16_t upper, lower, tmp_pc;
 
@@ -114,50 +128,48 @@ uint16_t get_operand(struct cpu* emu_cpu, uint8_t op)
       return 0;
     case AM_IMMD:
     case AM_ZPG :
-      return (uint16_t)fetch(emu_cpu);
+      return (uint16_t)fetch();
     case AM_ZPGX:
-      return (uint8_t)(fetch(emu_cpu) + emu_cpu->reg_X);
+      return (uint8_t)(fetch() + emu_cpu.reg_X);
     case AM_ZPGY:
-      return (uint8_t)(fetch(emu_cpu) + emu_cpu->reg_Y);
+      return (uint8_t)(fetch() + emu_cpu.reg_Y);
     case AM_ABS :
-      lower = fetch(emu_cpu);
-      upper = (uint16_t)fetch(emu_cpu) << 8;
+      lower = fetch();
+      upper = (uint16_t)fetch() << 8;
       return (lower | upper);
     case AM_ABSX:
-      lower = fetch(emu_cpu);
-      upper = (uint16_t)fetch(emu_cpu) << 8;
-      return (lower | upper) + (uint16_t)emu_cpu->reg_X;
-      //return (int16_t)(lower | upper) + (int8_t)emu_cpu->reg_X;
+      lower = fetch();
+      upper = (uint16_t)fetch() << 8;
+      return (lower | upper) + (uint16_t)emu_cpu.reg_X;
+      //return (int16_t)(lower | upper) + (int8_t)emu_cpu.reg_X;
     case AM_ABSY:
-      lower = fetch(emu_cpu);
-      upper = (uint16_t)fetch(emu_cpu) << 8;
-      return (lower | upper) + (uint16_t)emu_cpu->reg_Y;
-      //return (int16_t)(lower | upper) + (int8_t)emu_cpu->reg_Y;
+      lower = fetch();
+      upper = (uint16_t)fetch() << 8;
+      return (lower | upper) + (uint16_t)emu_cpu.reg_Y;
+      //return (int16_t)(lower | upper) + (int8_t)emu_cpu.reg_Y;
     case AM_REL :
       // TODO debug
-      tmp_pc = emu_cpu->reg_PC;
-      return tmp_pc + (int16_t)fetch(emu_cpu);
+      return (int8_t)fetch() + emu_cpu.reg_PC;
     case AM_XIND:
-      tmp_pc = (uint8_t)(fetch(emu_cpu) + emu_cpu->reg_X);
-      return *(uint16_t*)&(emu_cpu->memory[tmp_pc]);
+      tmp_pc = (uint8_t)(fetch() + emu_cpu.reg_X);
+      return *(uint16_t*)&(emu_cpu.memory[tmp_pc]);
     case AM_INDY:
-      tmp_pc = (uint16_t)fetch(emu_cpu);
-      return *(uint16_t*)&(emu_cpu->memory[tmp_pc]) + (uint16_t)emu_cpu->reg_Y;
+      tmp_pc = (uint16_t)fetch();
+      return *(uint16_t*)&(emu_cpu.memory[tmp_pc]) + (uint16_t)emu_cpu.reg_Y;
     case AM_IND :
-      lower = fetch(emu_cpu);
-      upper = (uint16_t)fetch(emu_cpu) << 8;
-      return (lower | upper);
+      lower = fetch();
+      upper = (uint16_t)fetch() << 8;
+      return *(uint16_t*)&(emu_cpu.memory[lower | upper]);
     case AM_UNDF:
     default:
-      printf("[E] Undefined addressing mode\n");
-      exit(1);
+      ERROR("Undefined addressing mode")
       break;
   }
 }
 
-void exec(struct cpu* emu_cpu, uint8_t op, uint16_t operand)
+void exec(uint8_t op, uint16_t operand)
 {
-  uint16_t result;
+  uint16_t result, tmp_pc;
   uint8_t tmp_m;
   uint8_t tmp_a;
   switch(OPCODE[op]) {
@@ -165,126 +177,343 @@ void exec(struct cpu* emu_cpu, uint8_t op, uint16_t operand)
       if(AM[op] == AM_IMMD)
         tmp_m = operand;
       else
-        tmp_m = emu_cpu->memory[operand];
-      result = emu_cpu->reg_A + tmp_m + get_status_at(emu_cpu, STATUS_C);
-      set_overflow(emu_cpu, emu_cpu->reg_A, tmp_m, OP_ADC); 
-      set_carry(emu_cpu, result);
-      emu_cpu->reg_A = result;
-      set_reg_P(emu_cpu, STATUS_N, emu_cpu->reg_A);
-      set_reg_P(emu_cpu, STATUS_Z, emu_cpu->reg_A);
+        tmp_m = emu_cpu.memory[operand];
+      result = emu_cpu.reg_A + tmp_m + get_status_at(STATUS_C);
+      set_reg_P(STATUS_V, check_overflow(emu_cpu.reg_A, tmp_m, OP_ADC));
+      set_reg_P(STATUS_C, check_carry(emu_cpu.reg_A, tmp_m, OP_ADC));
+      emu_cpu.reg_A = result;
+      set_reg_P(STATUS_N, (emu_cpu.reg_A & 0x80) != 0);
+      set_reg_P(STATUS_Z, emu_cpu.reg_A == 0);
       break;
     case OP_SBC:
+      if(AM[op] == AM_IMMD)
+        tmp_m = operand;
+      else
+        tmp_m = emu_cpu.memory[operand];
+      result = emu_cpu.reg_A - tmp_m - (get_status_at(STATUS_C)^1);
+      set_reg_P(STATUS_V, check_overflow(emu_cpu.reg_A, tmp_m, OP_SBC));
+      set_reg_P(STATUS_C, check_carry(emu_cpu.reg_A, tmp_m, OP_SBC));
+      emu_cpu.reg_A = result;
+      set_reg_P(STATUS_N, (emu_cpu.reg_A & 0x80) != 0);
+      set_reg_P(STATUS_Z, emu_cpu.reg_A == 0);
+      break;
     case OP_AND:
+      if(AM[op] == AM_IMMD)
+        tmp_m = operand;
+      else
+        tmp_m = emu_cpu.memory[operand];
+      emu_cpu.reg_A &= tmp_m; 
+      set_reg_P(STATUS_N, (emu_cpu.reg_A & 0x80) != 0);
+      set_reg_P(STATUS_Z, emu_cpu.reg_A == 0);
+      break;
     case OP_ORA:
+      if(AM[op] == AM_IMMD)
+        tmp_m = operand;
+      else 
+        tmp_m = emu_cpu.memory[operand];
+      emu_cpu.reg_A |= tmp_m;
+      set_reg_P(STATUS_N, (emu_cpu.reg_A & 0x80) != 0);
+      set_reg_P(STATUS_Z, emu_cpu.reg_A == 0);
+      break;
     case OP_EOR:
+      if(AM[op] == AM_IMMD)
+        tmp_m = operand;
+      else 
+        tmp_m = emu_cpu.memory[operand];
+      emu_cpu.reg_A ^= tmp_m;
+      set_reg_P(STATUS_N, (emu_cpu.reg_A & 0x80) != 0);
+      set_reg_P(STATUS_Z, emu_cpu.reg_A == 0);
+      break;
     case OP_ASL:
+      if(AM[op] == AM_ACCM){
+        set_reg_P(STATUS_C, (emu_cpu.reg_A & 0x80) != 0);
+        emu_cpu.reg_A <<= 1;
+        tmp_m = emu_cpu.reg_A;
+      }
+      else {
+        tmp_m = emu_cpu.memory[operand];
+        set_reg_P(STATUS_C, (tmp_m & 0x80) != 0);
+        tmp_m <<= 1; 
+        emu_cpu.memory[operand] = tmp_m;
+      }
+      set_reg_P(STATUS_N, (tmp_m & 0x80) != 0);
+      set_reg_P(STATUS_Z, tmp_m == 0);
+      break;
     case OP_LSR:
+      if(AM[op] == AM_ACCM){
+        set_reg_P(STATUS_C, emu_cpu.reg_A & 0x1);
+        emu_cpu.reg_A >>= 1;
+        tmp_m = emu_cpu.reg_A;
+      }
+      else {
+        tmp_m = emu_cpu.memory[operand];
+        set_reg_P(STATUS_C, tmp_m & 0x1);
+        tmp_m >>= 1;
+        emu_cpu.memory[operand] = tmp_m;
+      }
+      set_reg_P(STATUS_N, (tmp_m & 0x80) != 0);
+      set_reg_P(STATUS_Z, tmp_m == 0);
+      break;
     case OP_ROL:
+      if(AM[op] == AM_ACCM){
+        tmp_m = emu_cpu.reg_A;
+        tmp_m <<= 1;
+        tmp_m |= get_status_at(STATUS_C);
+        set_reg_P(STATUS_C, emu_cpu.reg_A & 0x80);
+        emu_cpu.reg_A = tmp_m;
+      }
+      else {
+        tmp_m = emu_cpu.memory[operand];
+        tmp_m <<= 1;
+        tmp_m |= get_status_at(STATUS_C);
+        set_reg_P(STATUS_C, emu_cpu.memory[operand] & 0x80);
+        emu_cpu.memory[operand] = tmp_m;
+      }
+      set_reg_P(STATUS_N, (tmp_m & 0x80) != 0);
+      set_reg_P(STATUS_Z, tmp_m == 0);
+      break;
     case OP_ROR:
+      if(AM[op] == AM_ACCM){
+        tmp_m = emu_cpu.reg_A;
+        tmp_m >>= 1;
+        tmp_m |= (get_status_at(STATUS_C)<<7);
+        set_reg_P(STATUS_C, emu_cpu.reg_A & 0x1);
+        emu_cpu.reg_A = tmp_m;
+      }
+      else {
+        tmp_m = emu_cpu.memory[operand];
+        tmp_m >>= 1;
+        tmp_m |= (get_status_at(STATUS_C)<<7);
+        set_reg_P(STATUS_C, emu_cpu.memory[operand] & 0x1);
+        emu_cpu.memory[operand] = tmp_m;
+      }
+      set_reg_P(STATUS_N, (tmp_m & 0x80) != 0);
+      set_reg_P(STATUS_Z, tmp_m == 0);
+      break;
     case OP_BCC:
+      if(get_status_at(STATUS_C) == 0)
+        emu_cpu.reg_PC = operand;
+      break;
     case OP_BCS:
+      if(get_status_at(STATUS_C) == 1)
+        emu_cpu.reg_PC = operand;
+      break;
     case OP_BEQ:
+      if(get_status_at(STATUS_Z) == 1)
+        emu_cpu.reg_PC = operand;
+      break;
     case OP_BNE:
+      if(get_status_at(STATUS_Z) == 0)
+        emu_cpu.reg_PC = operand;
+      break;
     case OP_BVC:
+      if(get_status_at(STATUS_V) == 0)
+        emu_cpu.reg_PC = operand;
+      break;
     case OP_BVS:
+      if(get_status_at(STATUS_V) == 1)
+        emu_cpu.reg_PC = operand;
+      break;
     case OP_BPL:
+      if(get_status_at(STATUS_N) == 0)
+        emu_cpu.reg_PC = operand;
+      break;
     case OP_BMI:
+      if(get_status_at(STATUS_N) == 1)
+        emu_cpu.reg_PC = operand;
+      break;
     case OP_BIT:
+      set_reg_P(STATUS_V, emu_cpu.memory[operand] & 0x40);
+      set_reg_P(STATUS_N, emu_cpu.memory[operand] & 0x80);
+      set_reg_P(STATUS_Z, (emu_cpu.reg_A & emu_cpu.memory[operand])==0);
+      break;
     case OP_JMP:
+      emu_cpu.reg_PC = operand;
+      break;
     case OP_JSR:
+      tmp_pc = emu_cpu.reg_PC - 1;
+      push_SP((tmp_pc >> 8) & 0xff);
+      push_SP(tmp_pc & 0xff);
+      emu_cpu.reg_PC = operand;
+      break;
     case OP_RTS:
+      tmp_pc = pop_SP() | (pop_SP() << 8);
+      tmp_pc++;
+      emu_cpu.reg_PC = tmp_pc;
+      break;
     case OP_BRK:
+      set_reg_P(STATUS_B, true);
+      break;
     case OP_RTI:
+      emu_cpu.reg_P = pop_SP();
+      tmp_pc = pop_SP() | (pop_SP() << 8);
+      emu_cpu.reg_PC = tmp_pc;
+      break;
     case OP_CMP:
+      if(AM[op] == AM_IMMD)
+        tmp_m = operand;
+      else 
+        tmp_m = emu_cpu.memory[operand];
+      set_reg_P(STATUS_C, check_carry(emu_cpu.reg_A, tmp_m, OP_CMP));
+      tmp_m = emu_cpu.reg_A - tmp_m;
+      set_reg_P(STATUS_N, tmp_m & 0x80);
+      set_reg_P(STATUS_Z, (tmp_m & 0xff)==0);
+      break;
     case OP_CPX:
+      if(AM[op] == AM_IMMD)
+        tmp_m = operand;
+      else 
+        tmp_m = emu_cpu.memory[operand];
+      set_reg_P(STATUS_C, check_carry(emu_cpu.reg_X, tmp_m, OP_CPX));
+      tmp_m = emu_cpu.reg_X - tmp_m;
+      set_reg_P(STATUS_N, tmp_m & 0x80);
+      set_reg_P(STATUS_Z, (tmp_m & 0xff)==0);
+      break;
     case OP_CPY:
+      if(AM[op] == AM_IMMD)
+        tmp_m = operand;
+      else 
+        tmp_m = emu_cpu.memory[operand];
+      set_reg_P(STATUS_C, check_carry(emu_cpu.reg_Y, tmp_m, OP_CPY));
+      tmp_m = emu_cpu.reg_Y - tmp_m;
+      set_reg_P(STATUS_N, tmp_m & 0x80);
+      set_reg_P(STATUS_Z, (tmp_m & 0xff)==0);
+      break;
     case OP_INC:
+      tmp_m = emu_cpu.memory[operand] + 1;
+      emu_cpu.memory[operand] = tmp_m;
+      set_reg_P(STATUS_N, tmp_m & 0x80);
+      set_reg_P(STATUS_Z, (tmp_m & 0xff)==0);
+      break;
     case OP_DEC:
+      tmp_m = emu_cpu.memory[operand] - 1;
+      emu_cpu.memory[operand] = tmp_m;
+      set_reg_P(STATUS_N, tmp_m & 0x80);
+      set_reg_P(STATUS_Z, (tmp_m & 0xff)==0);
+      break;
     case OP_INX:
+      emu_cpu.reg_X++;
+      set_reg_P(STATUS_N, emu_cpu.reg_X & 0x80);
+      set_reg_P(STATUS_Z, (emu_cpu.reg_X & 0xff)==0);
+      break; 
     case OP_DEX:
+      emu_cpu.reg_X--;
+      set_reg_P(STATUS_N, emu_cpu.reg_X & 0x80);
+      set_reg_P(STATUS_Z, (emu_cpu.reg_X & 0xff)==0);
+      break; 
     case OP_INY:
+      emu_cpu.reg_Y++;
+      set_reg_P(STATUS_N, emu_cpu.reg_Y & 0x80);
+      set_reg_P(STATUS_Z, (emu_cpu.reg_Y & 0xff)==0);
+      break; 
     case OP_DEY:
+      emu_cpu.reg_Y--;
+      set_reg_P(STATUS_N, emu_cpu.reg_Y & 0x80);
+      set_reg_P(STATUS_Z, (emu_cpu.reg_Y & 0xff)==0);
+      break; 
     case OP_CLC:
+      set_reg_P(STATUS_C, false);
+      break;
     case OP_SEC:
+      set_reg_P(STATUS_C, true);
+      break;
     case OP_CLI:
+      set_reg_P(STATUS_I, false);
+      break;
     case OP_SEI:
+      set_reg_P(STATUS_I, true);
+      break;
     case OP_CLD:
+      set_reg_P(STATUS_D, false);
+      break;
     case OP_SED:
+      set_reg_P(STATUS_D, true);
+      break;
     case OP_CLV:
+      set_reg_P(STATUS_V, false);
+      break;
     case OP_LDA:
       if(AM[op] == AM_IMMD)
-        emu_cpu->reg_A = operand;
+        emu_cpu.reg_A = operand;
       else
-        emu_cpu->reg_A = emu_cpu->memory[operand];
-      set_reg_P(emu_cpu, STATUS_N, emu_cpu->reg_A);
-      set_reg_P(emu_cpu, STATUS_Z, emu_cpu->reg_A);
+        emu_cpu.reg_A = emu_cpu.memory[operand];
+      set_reg_P(STATUS_N, emu_cpu.reg_A & 0x80);
+      set_reg_P(STATUS_Z, emu_cpu.reg_A == 0);
       break;
     case OP_LDX:
       if(AM[op] == AM_IMMD)
-        emu_cpu->reg_X = operand;
+        emu_cpu.reg_X = operand;
       else
-        emu_cpu->reg_X = emu_cpu->memory[operand];
-      set_reg_P(emu_cpu, STATUS_N, emu_cpu->reg_X);
-      set_reg_P(emu_cpu, STATUS_Z, emu_cpu->reg_X);
+        emu_cpu.reg_X = emu_cpu.memory[operand];
+      set_reg_P(STATUS_N, emu_cpu.reg_X & 0x80);
+      set_reg_P(STATUS_Z, emu_cpu.reg_X == 0);
       break;
     case OP_LDY:
       if(AM[op] == AM_IMMD)
-        emu_cpu->reg_Y = operand;
+        emu_cpu.reg_Y = operand;
       else
-        emu_cpu->reg_Y = emu_cpu->memory[operand];
-      set_reg_P(emu_cpu, STATUS_N, emu_cpu->reg_Y);
-      set_reg_P(emu_cpu, STATUS_Z, emu_cpu->reg_Y);
+        emu_cpu.reg_Y = emu_cpu.memory[operand];
+      set_reg_P(STATUS_N, emu_cpu.reg_Y & 0x80);
+      set_reg_P(STATUS_Z, emu_cpu.reg_Y == 0);
       break;
     case OP_STA:
-      emu_cpu->memory[operand] = emu_cpu->reg_A;
+      emu_cpu.memory[operand] = emu_cpu.reg_A;
       break;
     case OP_STX:
-      emu_cpu->memory[operand] = emu_cpu->reg_X;
+      emu_cpu.memory[operand] = emu_cpu.reg_X;
       break;
     case OP_STY:
-      emu_cpu->memory[operand] = emu_cpu->reg_Y;
+      emu_cpu.memory[operand] = emu_cpu.reg_Y;
       break;
     case OP_TAX:
-      emu_cpu->reg_X = emu_cpu->reg_A;
-      set_reg_P(emu_cpu, STATUS_N, emu_cpu->reg_X);
-      set_reg_P(emu_cpu, STATUS_Z, emu_cpu->reg_X);
+      emu_cpu.reg_X = emu_cpu.reg_A;
+      set_reg_P(STATUS_N, emu_cpu.reg_X & 0x80);
+      set_reg_P(STATUS_Z, emu_cpu.reg_X == 0);
       break;
     case OP_TXA:
-      emu_cpu->reg_A = emu_cpu->reg_X;
-      set_reg_P(emu_cpu, STATUS_N, emu_cpu->reg_A);
-      set_reg_P(emu_cpu, STATUS_Z, emu_cpu->reg_A);
+      emu_cpu.reg_A = emu_cpu.reg_X;
+      set_reg_P(STATUS_N, emu_cpu.reg_A & 0x80);
+      set_reg_P(STATUS_Z, emu_cpu.reg_A == 0);
       break;
     case OP_TAY:
-      emu_cpu->reg_Y = emu_cpu->reg_A;
-      set_reg_P(emu_cpu, STATUS_N, emu_cpu->reg_Y);
-      set_reg_P(emu_cpu, STATUS_Z, emu_cpu->reg_Y);
+      emu_cpu.reg_Y = emu_cpu.reg_A;
+      set_reg_P(STATUS_N, emu_cpu.reg_Y & 0x80);
+      set_reg_P(STATUS_Z, emu_cpu.reg_Y == 0);
       break;
     case OP_TYA:
-      emu_cpu->reg_A = emu_cpu->reg_Y;
-      set_reg_P(emu_cpu, STATUS_N, emu_cpu->reg_A);
-      set_reg_P(emu_cpu, STATUS_Z, emu_cpu->reg_A);
+      emu_cpu.reg_A = emu_cpu.reg_Y;
+      set_reg_P(STATUS_N, emu_cpu.reg_A & 0x80);
+      set_reg_P(STATUS_Z, emu_cpu.reg_A == 0);
       break;
     case OP_TSX:
-      emu_cpu->reg_X = emu_cpu->reg_SP & 0xff;
-      set_reg_P(emu_cpu, STATUS_N, emu_cpu->reg_X);
-      set_reg_P(emu_cpu, STATUS_Z, emu_cpu->reg_X);
+      emu_cpu.reg_X = emu_cpu.reg_SP & 0xff;
+      set_reg_P(STATUS_N, emu_cpu.reg_X & 0x80);
+      set_reg_P(STATUS_Z, emu_cpu.reg_X == 0);
       break;
     case OP_TXS:
-      emu_cpu->reg_SP = emu_cpu->reg_X+0x100;
+      emu_cpu.reg_SP = emu_cpu.reg_X | 0x100;
       break;
     case OP_PHA:
+      push_SP(emu_cpu.reg_A);
+      break;
     case OP_PLA:
+      emu_cpu.reg_A = pop_SP();
+      break;
     case OP_PHP:
+      push_SP(emu_cpu.reg_P);
+      break;
     case OP_PLP:
+      emu_cpu.reg_P = pop_SP();
+      break;
     case OP_NOP:
       break;
     case OP_UND:
-      puts("[E] Undefined OPERATION");
-      exit(1);
+      ERROR("Undefined Operation");
+      break;
   }
 }
 
-void run(struct cpu* emu_cpu)
+void run()
 {
   int tmp;
   uint8_t op;
@@ -293,41 +522,41 @@ void run(struct cpu* emu_cpu)
   puts("execution");
   
   for(tmp = 0; tmp < 2; tmp++){
-    debug(emu_cpu);
-    op = fetch(emu_cpu);
-    operand = get_operand(emu_cpu, op);
-    exec(emu_cpu, op, operand);
+    debug();
+    op = fetch();
+    operand = get_operand(op);
+    exec(op, operand);
   }
 }
 
 // FUNCTIONS FOR DEBUG 
-void debug(struct cpu* emu_cpu)
+void debug()
 {
   int i;
   printf("-------------------\n");
-  printf("A : 0x%04x\n", emu_cpu->reg_A);
-  printf("X : 0x%04x\n", emu_cpu->reg_X);
-  printf("Y : 0x%04x\n", emu_cpu->reg_Y);
-  printf("SP: 0x%04x\n", emu_cpu->reg_SP);
-  printf("P : 0x%04x\n", emu_cpu->reg_P);
-  printf("PC: 0x%04x\n", emu_cpu->reg_PC);
+  printf("A :   0x%02x\n", emu_cpu.reg_A);
+  printf("X :   0x%02x\n", emu_cpu.reg_X);
+  printf("Y :   0x%02x\n", emu_cpu.reg_Y);
+  printf("P :   0x%02x\n", emu_cpu.reg_P);
+  printf("SP: 0x%04x\n", emu_cpu.reg_SP);
+  printf("PC: 0x%04x\n", emu_cpu.reg_PC);
   printf("STATUS: | ");
   for(i = 0; i < 8; i++){
-    if(emu_cpu->reg_P & (1<<i)){
+    if(emu_cpu.reg_P & (1<<i)){
       printf("%s | ", status_str[i]);
     }
   }
   puts("");
 }
 
-void dump(struct cpu* emu_cpu, uint16_t addr, int32_t size)
+void dump(uint16_t addr, int32_t size)
 {
   int l,i;
   printf("--- memory dump ---\n");
   for(l = 0; l < size; l+=8){
     printf("[0x%04x]: ", addr+l);
     for(i = 0; i+l < size && i < 8; i++)
-      printf("%02x ", emu_cpu->memory[addr+i+l]);
+      printf("%02x ", emu_cpu.memory[addr+i+l]);
     puts("");
   }
 }

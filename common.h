@@ -10,6 +10,13 @@
 
 #define MEMORY_SIZE				0x10000
 
+#define ERROR(msg) \
+while(1){ \
+	printf("[E] " msg "\n"); \
+	debug(); \
+	exit(1); \
+}
+
 struct rom {
 	void* prg_rom;
 	void* chr_rom;
