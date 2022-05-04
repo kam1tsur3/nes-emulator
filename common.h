@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdio.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -7,6 +6,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <cstdint>
+#include <pthread.h>
+#include <thread>
 
 #define MEMORY_SIZE				0x10000
 

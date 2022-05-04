@@ -1,12 +1,13 @@
 #include "../common.h"
 #include "cpu.h"
 
-struct cpu emu_cpu;
-bool terminate_flag = false;
-
+// extern functions
 extern uint8_t cpu_bus_read(uint16_t);
 extern void cpu_bus_write(uint16_t, uint8_t);
 extern uint16_t cpu_bus_read_word(uint16_t);
+
+// global variable
+struct cpu emu_cpu;
 
 void init_regs()
 {
@@ -544,14 +545,11 @@ void run()
   
   puts("execution");
   
-  //for(tmp = 0; tmp < 2; tmp++){
-  while(!terminate_flag){
-    //debug();
+  while(1){
     op = fetch();
     operand = get_operand(op);
     exec(op, operand);
   }
-  debug();
 }
 
 // FUNCTIONS FOR DEBUG 

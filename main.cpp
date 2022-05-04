@@ -20,10 +20,12 @@ int main(int argc, char *argv[])
 		puts("Usage: ./emulator <nesfile>");
 		exit(1);
 	}
+
 	load_rom(argv[1]);
 	init_ppu();
 	reset();
-	run();
+
+	std::thread cpu_thread(run);
 
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_SINGLE | GLUT_RGBA);
