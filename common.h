@@ -13,13 +13,12 @@
 #define ERROR(msg) \
 while(1){ \
 	printf("[E] " msg "\n"); \
-	debug(); \
 	exit(1); \
 }
 
 struct rom {
-	void* prg_rom;
-	void* chr_rom;
+	uint8_t* prg_rom;
+	uint8_t* chr_rom;
 	int size_prg_rom;
 	int size_chr_rom;
 };
@@ -31,6 +30,15 @@ struct cpu {
 	uint16_t reg_SP;
 	uint8_t reg_P;
 	uint16_t reg_PC;
-  uint8_t memory[MEMORY_SIZE];
 };
 
+struct ppu {
+  uint8_t reg_ctrl1;
+  uint8_t reg_ctrl2;
+  //uint8_t reg_sprite_addr;
+  //uint8_t reg_sprite_data;
+  uint16_t vram_addr;
+  uint8_t vram_switch;
+  uint8_t bg_palette[0x10];
+  uint8_t sp_palette[0x10];
+};

@@ -22,6 +22,7 @@ int main (int argc, char** argv)
   
   //Actually create the window
   GLFWwindow* window = glfwCreateWindow (640, 480, "OpenGL Initialization Example", NULL, NULL);
+  //GLFWwindow* window = glfwCreateWindow (256, 240, "NES Emulator", NULL, NULL);
   if (!window) 
     {
       std::cerr<<"ERROR: could not open window with GLFW3"<<std::endl;
@@ -39,11 +40,29 @@ int main (int argc, char** argv)
   const GLubyte* version = glGetString (GL_VERSION); // version as a string
   std::cout<<"Renderer: "<<renderer<<std::endl;
   std::cout<<"OpenGL version supported "<<version<<std::endl;
-	
-  glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(0.0f, 640, 0.0f, 480, -1.0f, 1.0f);
+  //glOrtho(0.0f, 256, 0.0f, 240, -1.0f, 1.0f);
+
   while(glfwWindowShouldClose(window) == GL_FALSE)
   {
+	glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
+
+  glColor3f(0.0,1.0,0.0); 
+  glPointSize(10);
+  glBegin(GL_POINTS);
+  glVertex2i(0,0);
+  glEnd();
+  glFlush();
+
+  //glMatrixMode(GL_MODELVIEW);
+  //glEnableClientState(GL_VERTEX_ARRAY);
+  //glDrawArrays(GL_POINTS, 0, 1);
+  //glDisableClientState(GL_VERTEX_ARRAY);
+
 	glfwSwapBuffers(window);
 	glfwWaitEvents();
   }

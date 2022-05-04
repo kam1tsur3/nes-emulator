@@ -1,10 +1,7 @@
-#define NES_FILE_NAME   "./cassette/sample1/sample1.nes"
 #define HEADER_SIZE     16
 #define HEADER_MAGIC    "NES\x1A"
 #define PRG_PAGE_SIZE   0x4000
 #define CHR_PAGE_SIZE   0x2000
-
-void load_rom();
 
 struct header {
   uint32_t MAGIC;

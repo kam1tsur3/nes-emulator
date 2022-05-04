@@ -23,15 +23,6 @@ const char* status_str[8] =
 #define VEC_IRQ     0xFFFE
 #define VEC_BRK     0xFFFE
 
-#define ADDR_WRAM                 0x0000
-#define ADDR_WRAM_MIRROR          0x0800
-#define ADDR_PPU_REGS             0x2000
-#define ADDR_PPU_REGS_MIRROR      0x2008
-#define ADDR_APU_IO_PAD           0x4000
-#define ADDR_EXT_ROM              0x4020
-#define ADDR_EXT_RAM              0x6000
-#define ADDR_PRG_ROM1             0x8000
-#define ADDR_PRG_ROM2             0xC000
 
 // addressing mode
 #define AM_IMPL            0

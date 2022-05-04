@@ -1,15 +1,12 @@
 #include "../common.h"
 #include "cpu.h"
 
-extern struct cpu emu_cpu;
+struct cpu emu_cpu;
+bool terminate_flag = false;
 
-void init_cpu()
-{
-  init_regs();
-  // for test
-  emu_cpu.memory[0xFFFC] = 0x00;
-  emu_cpu.memory[0xFFFD] = 0x80;
-}
+extern uint8_t cpu_bus_read(uint16_t);
+extern void cpu_bus_write(uint16_t, uint8_t);
+extern uint16_t cpu_bus_read_word(uint16_t);
 
 void init_regs()
 {
@@ -24,12 +21,12 @@ void init_regs()
 void reset()
 {
   init_regs();
-  emu_cpu.reg_PC = *(uint16_t*)&(emu_cpu.memory[VEC_RESET]);
+  emu_cpu.reg_PC = cpu_bus_read_word(VEC_RESET);
 }
 
 uint8_t fetch()
 {
-  return emu_cpu.memory[emu_cpu.reg_PC++];
+  return cpu_bus_read(emu_cpu.reg_PC++);
 }
 
 uint8_t get_status_at(uint8_t at)
@@ -109,12 +106,12 @@ bool check_overflow(uint8_t x, uint8_t y, uint8_t op)
 uint8_t pop_SP()
 {
   emu_cpu.reg_SP = ((emu_cpu.reg_SP + 1) & 0xff) | 0x100;
-  return emu_cpu.memory[emu_cpu.reg_SP];
+  return cpu_bus_read(emu_cpu.reg_SP);
 }
 
 void push_SP(uint8_t val)
 {
-  emu_cpu.memory[emu_cpu.reg_SP] = val;
+  cpu_bus_write(emu_cpu.reg_SP, val);
   emu_cpu.reg_SP = ((emu_cpu.reg_SP - 1) & 0xff) | 0x100;
 }
 
@@ -141,25 +138,25 @@ uint16_t get_operand(uint8_t op)
       lower = fetch();
       upper = (uint16_t)fetch() << 8;
       return (lower | upper) + (uint16_t)emu_cpu.reg_X;
-      //return (int16_t)(lower | upper) + (int8_t)emu_cpu.reg_X;
     case AM_ABSY:
       lower = fetch();
       upper = (uint16_t)fetch() << 8;
       return (lower | upper) + (uint16_t)emu_cpu.reg_Y;
-      //return (int16_t)(lower | upper) + (int8_t)emu_cpu.reg_Y;
     case AM_REL :
-      // TODO debug
       return (int8_t)fetch() + emu_cpu.reg_PC;
     case AM_XIND:
       tmp_pc = (uint8_t)(fetch() + emu_cpu.reg_X);
-      return *(uint16_t*)&(emu_cpu.memory[tmp_pc]);
+      return cpu_bus_read_word(tmp_pc);
+      //return *(uint16_t*)&(emu_cpu.memory[tmp_pc]);
     case AM_INDY:
       tmp_pc = (uint16_t)fetch();
-      return *(uint16_t*)&(emu_cpu.memory[tmp_pc]) + (uint16_t)emu_cpu.reg_Y;
+      return cpu_bus_read_word(tmp_pc) + (uint16_t)emu_cpu.reg_Y;
+      //return *(uint16_t*)&(emu_cpu.memory[tmp_pc]) + (uint16_t)emu_cpu.reg_Y;
     case AM_IND :
       lower = fetch();
       upper = (uint16_t)fetch() << 8;
-      return *(uint16_t*)&(emu_cpu.memory[lower | upper]);
+      return cpu_bus_read_word(lower | upper);
+      //return *(uint16_t*)&(emu_cpu.memory[lower | upper]);
     case AM_UNDF:
     default:
       ERROR("Undefined addressing mode")
@@ -177,7 +174,8 @@ void exec(uint8_t op, uint16_t operand)
       if(AM[op] == AM_IMMD)
         tmp_m = operand;
       else
-        tmp_m = emu_cpu.memory[operand];
+        tmp_m = cpu_bus_read(operand);
+        //tmp_m = emu_cpu.memory[operand];
       result = emu_cpu.reg_A + tmp_m + get_status_at(STATUS_C);
       set_reg_P(STATUS_V, check_overflow(emu_cpu.reg_A, tmp_m, OP_ADC));
       set_reg_P(STATUS_C, check_carry(emu_cpu.reg_A, tmp_m, OP_ADC));
@@ -189,7 +187,8 @@ void exec(uint8_t op, uint16_t operand)
       if(AM[op] == AM_IMMD)
         tmp_m = operand;
       else
-        tmp_m = emu_cpu.memory[operand];
+        tmp_m = cpu_bus_read(operand);
+        //tmp_m = emu_cpu.memory[operand];
       result = emu_cpu.reg_A - tmp_m - (get_status_at(STATUS_C)^1);
       set_reg_P(STATUS_V, check_overflow(emu_cpu.reg_A, tmp_m, OP_SBC));
       set_reg_P(STATUS_C, check_carry(emu_cpu.reg_A, tmp_m, OP_SBC));
@@ -201,7 +200,8 @@ void exec(uint8_t op, uint16_t operand)
       if(AM[op] == AM_IMMD)
         tmp_m = operand;
       else
-        tmp_m = emu_cpu.memory[operand];
+        tmp_m = cpu_bus_read(operand);
+        //tmp_m = emu_cpu.memory[operand];
       emu_cpu.reg_A &= tmp_m; 
       set_reg_P(STATUS_N, (emu_cpu.reg_A & 0x80) != 0);
       set_reg_P(STATUS_Z, emu_cpu.reg_A == 0);
@@ -210,7 +210,8 @@ void exec(uint8_t op, uint16_t operand)
       if(AM[op] == AM_IMMD)
         tmp_m = operand;
       else 
-        tmp_m = emu_cpu.memory[operand];
+        tmp_m = cpu_bus_read(operand);
+        //tmp_m = emu_cpu.memory[operand];
       emu_cpu.reg_A |= tmp_m;
       set_reg_P(STATUS_N, (emu_cpu.reg_A & 0x80) != 0);
       set_reg_P(STATUS_Z, emu_cpu.reg_A == 0);
@@ -219,7 +220,8 @@ void exec(uint8_t op, uint16_t operand)
       if(AM[op] == AM_IMMD)
         tmp_m = operand;
       else 
-        tmp_m = emu_cpu.memory[operand];
+        tmp_m = cpu_bus_read(operand);
+        //tmp_m = emu_cpu.memory[operand];
       emu_cpu.reg_A ^= tmp_m;
       set_reg_P(STATUS_N, (emu_cpu.reg_A & 0x80) != 0);
       set_reg_P(STATUS_Z, emu_cpu.reg_A == 0);
@@ -231,10 +233,12 @@ void exec(uint8_t op, uint16_t operand)
         tmp_m = emu_cpu.reg_A;
       }
       else {
-        tmp_m = emu_cpu.memory[operand];
+        tmp_m = cpu_bus_read(operand);
+        //tmp_m = emu_cpu.memory[operand];
         set_reg_P(STATUS_C, (tmp_m & 0x80) != 0);
         tmp_m <<= 1; 
-        emu_cpu.memory[operand] = tmp_m;
+        cpu_bus_write(operand, tmp_m);
+        //emu_cpu.memory[operand] = tmp_m;
       }
       set_reg_P(STATUS_N, (tmp_m & 0x80) != 0);
       set_reg_P(STATUS_Z, tmp_m == 0);
@@ -246,10 +250,12 @@ void exec(uint8_t op, uint16_t operand)
         tmp_m = emu_cpu.reg_A;
       }
       else {
-        tmp_m = emu_cpu.memory[operand];
+        tmp_m = cpu_bus_read(operand);
+        //tmp_m = emu_cpu.memory[operand];
         set_reg_P(STATUS_C, tmp_m & 0x1);
         tmp_m >>= 1;
-        emu_cpu.memory[operand] = tmp_m;
+        cpu_bus_write(operand, tmp_m);
+        //emu_cpu.memory[operand] = tmp_m;
       }
       set_reg_P(STATUS_N, (tmp_m & 0x80) != 0);
       set_reg_P(STATUS_Z, tmp_m == 0);
@@ -263,11 +269,13 @@ void exec(uint8_t op, uint16_t operand)
         emu_cpu.reg_A = tmp_m;
       }
       else {
-        tmp_m = emu_cpu.memory[operand];
+        tmp_m = cpu_bus_read(operand);
+        //tmp_m = emu_cpu.memory[operand];
         tmp_m <<= 1;
         tmp_m |= get_status_at(STATUS_C);
-        set_reg_P(STATUS_C, emu_cpu.memory[operand] & 0x80);
-        emu_cpu.memory[operand] = tmp_m;
+        set_reg_P(STATUS_C, cpu_bus_read(operand) & 0x80);
+        cpu_bus_write(operand, tmp_m);
+        //emu_cpu.memory[operand] = tmp_m;
       }
       set_reg_P(STATUS_N, (tmp_m & 0x80) != 0);
       set_reg_P(STATUS_Z, tmp_m == 0);
@@ -281,11 +289,13 @@ void exec(uint8_t op, uint16_t operand)
         emu_cpu.reg_A = tmp_m;
       }
       else {
-        tmp_m = emu_cpu.memory[operand];
+        tmp_m = cpu_bus_read(operand);
+        //tmp_m = emu_cpu.memory[operand];
         tmp_m >>= 1;
         tmp_m |= (get_status_at(STATUS_C)<<7);
-        set_reg_P(STATUS_C, emu_cpu.memory[operand] & 0x1);
-        emu_cpu.memory[operand] = tmp_m;
+        set_reg_P(STATUS_C, cpu_bus_read(operand) & 0x1);
+        cpu_bus_write(operand, tmp_m);
+        //emu_cpu.memory[operand] = tmp_m;
       }
       set_reg_P(STATUS_N, (tmp_m & 0x80) != 0);
       set_reg_P(STATUS_Z, tmp_m == 0);
@@ -323,9 +333,9 @@ void exec(uint8_t op, uint16_t operand)
         emu_cpu.reg_PC = operand;
       break;
     case OP_BIT:
-      set_reg_P(STATUS_V, emu_cpu.memory[operand] & 0x40);
-      set_reg_P(STATUS_N, emu_cpu.memory[operand] & 0x80);
-      set_reg_P(STATUS_Z, (emu_cpu.reg_A & emu_cpu.memory[operand])==0);
+      set_reg_P(STATUS_V, cpu_bus_read(operand) & 0x40);
+      set_reg_P(STATUS_N, cpu_bus_read(operand) & 0x80);
+      set_reg_P(STATUS_Z, (emu_cpu.reg_A & cpu_bus_read(operand))==0);
       break;
     case OP_JMP:
       emu_cpu.reg_PC = operand;
@@ -353,7 +363,8 @@ void exec(uint8_t op, uint16_t operand)
       if(AM[op] == AM_IMMD)
         tmp_m = operand;
       else 
-        tmp_m = emu_cpu.memory[operand];
+        tmp_m = cpu_bus_read(operand);
+        //tmp_m = emu_cpu.memory[operand];
       set_reg_P(STATUS_C, check_carry(emu_cpu.reg_A, tmp_m, OP_CMP));
       tmp_m = emu_cpu.reg_A - tmp_m;
       set_reg_P(STATUS_N, tmp_m & 0x80);
@@ -363,7 +374,8 @@ void exec(uint8_t op, uint16_t operand)
       if(AM[op] == AM_IMMD)
         tmp_m = operand;
       else 
-        tmp_m = emu_cpu.memory[operand];
+        tmp_m = cpu_bus_read(operand);
+        //tmp_m = emu_cpu.memory[operand];
       set_reg_P(STATUS_C, check_carry(emu_cpu.reg_X, tmp_m, OP_CPX));
       tmp_m = emu_cpu.reg_X - tmp_m;
       set_reg_P(STATUS_N, tmp_m & 0x80);
@@ -373,21 +385,26 @@ void exec(uint8_t op, uint16_t operand)
       if(AM[op] == AM_IMMD)
         tmp_m = operand;
       else 
-        tmp_m = emu_cpu.memory[operand];
+        tmp_m = cpu_bus_read(operand);
+        //tmp_m = emu_cpu.memory[operand];
       set_reg_P(STATUS_C, check_carry(emu_cpu.reg_Y, tmp_m, OP_CPY));
       tmp_m = emu_cpu.reg_Y - tmp_m;
       set_reg_P(STATUS_N, tmp_m & 0x80);
       set_reg_P(STATUS_Z, (tmp_m & 0xff)==0);
       break;
     case OP_INC:
-      tmp_m = emu_cpu.memory[operand] + 1;
-      emu_cpu.memory[operand] = tmp_m;
+      //tmp_m = emu_cpu.memory[operand] + 1;
+      tmp_m = cpu_bus_read(operand) + 1;
+      cpu_bus_write(operand, tmp_m);
+      //emu_cpu.memory[operand] = tmp_m;
       set_reg_P(STATUS_N, tmp_m & 0x80);
       set_reg_P(STATUS_Z, (tmp_m & 0xff)==0);
       break;
     case OP_DEC:
-      tmp_m = emu_cpu.memory[operand] - 1;
-      emu_cpu.memory[operand] = tmp_m;
+      //tmp_m = emu_cpu.memory[operand] - 1;
+      tmp_m = cpu_bus_read(operand) - 1;
+      //emu_cpu.memory[operand] = tmp_m;
+      cpu_bus_write(operand, tmp_m);
       set_reg_P(STATUS_N, tmp_m & 0x80);
       set_reg_P(STATUS_Z, (tmp_m & 0xff)==0);
       break;
@@ -436,7 +453,8 @@ void exec(uint8_t op, uint16_t operand)
       if(AM[op] == AM_IMMD)
         emu_cpu.reg_A = operand;
       else
-        emu_cpu.reg_A = emu_cpu.memory[operand];
+        emu_cpu.reg_A = cpu_bus_read(operand);
+        //emu_cpu.reg_A = emu_cpu.memory[operand];
       set_reg_P(STATUS_N, emu_cpu.reg_A & 0x80);
       set_reg_P(STATUS_Z, emu_cpu.reg_A == 0);
       break;
@@ -444,7 +462,8 @@ void exec(uint8_t op, uint16_t operand)
       if(AM[op] == AM_IMMD)
         emu_cpu.reg_X = operand;
       else
-        emu_cpu.reg_X = emu_cpu.memory[operand];
+        emu_cpu.reg_X = cpu_bus_read(operand);
+        //emu_cpu.reg_X = emu_cpu.memory[operand];
       set_reg_P(STATUS_N, emu_cpu.reg_X & 0x80);
       set_reg_P(STATUS_Z, emu_cpu.reg_X == 0);
       break;
@@ -452,18 +471,22 @@ void exec(uint8_t op, uint16_t operand)
       if(AM[op] == AM_IMMD)
         emu_cpu.reg_Y = operand;
       else
-        emu_cpu.reg_Y = emu_cpu.memory[operand];
+        //emu_cpu.reg_Y = emu_cpu.memory[operand];
+        emu_cpu.reg_Y = cpu_bus_read(operand);
       set_reg_P(STATUS_N, emu_cpu.reg_Y & 0x80);
       set_reg_P(STATUS_Z, emu_cpu.reg_Y == 0);
       break;
     case OP_STA:
-      emu_cpu.memory[operand] = emu_cpu.reg_A;
+      //emu_cpu.memory[operand] = emu_cpu.reg_A;
+      cpu_bus_write(operand, emu_cpu.reg_A);
       break;
     case OP_STX:
-      emu_cpu.memory[operand] = emu_cpu.reg_X;
+      //emu_cpu.memory[operand] = emu_cpu.reg_X;
+      cpu_bus_write(operand, emu_cpu.reg_X);
       break;
     case OP_STY:
-      emu_cpu.memory[operand] = emu_cpu.reg_Y;
+      //emu_cpu.memory[operand] = emu_cpu.reg_Y;
+      cpu_bus_write(operand, emu_cpu.reg_Y);
       break;
     case OP_TAX:
       emu_cpu.reg_X = emu_cpu.reg_A;
@@ -521,12 +544,14 @@ void run()
   
   puts("execution");
   
-  for(tmp = 0; tmp < 2; tmp++){
-    debug();
+  //for(tmp = 0; tmp < 2; tmp++){
+  while(!terminate_flag){
+    //debug();
     op = fetch();
     operand = get_operand(op);
     exec(op, operand);
   }
+  debug();
 }
 
 // FUNCTIONS FOR DEBUG 
@@ -556,7 +581,7 @@ void dump(uint16_t addr, int32_t size)
   for(l = 0; l < size; l+=8){
     printf("[0x%04x]: ", addr+l);
     for(i = 0; i+l < size && i < 8; i++)
-      printf("%02x ", emu_cpu.memory[addr+i+l]);
+      printf("%02x ", cpu_bus_read(addr+i+l));
     puts("");
   }
 }
