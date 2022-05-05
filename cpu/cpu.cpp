@@ -16,7 +16,7 @@ void init_regs()
   emu_cpu.reg_Y = 0;
   emu_cpu.reg_P = 0x34;
   emu_cpu.reg_SP = 0x1fd;
-  emu_cpu.reg_PC = 0;
+  emu_cpu.reg_PC = 0x8000;
 }
 
 void reset()
@@ -544,7 +544,9 @@ void run()
   uint16_t operand;
   
   puts("execution");
-  
+
+  //for(tmp=0;tmp<2;tmp++) {
+  //  debug();
   while(1){
     op = fetch();
     operand = get_operand(op);
@@ -553,6 +555,18 @@ void run()
 }
 
 // FUNCTIONS FOR DEBUG 
+void dump(uint16_t addr, int32_t size)
+{
+  int l,i;
+  printf("--- memory dump ---\n");
+  for(l = 0; l < size; l+=8){
+    printf("[0x%04x]: ", addr+l);
+    for(i = 0; i+l < size && i < 8; i++)
+      printf("%02x ", cpu_bus_read(addr+i+l));
+    puts("");
+  }
+}
+
 void debug()
 {
   int i;
@@ -569,17 +583,7 @@ void debug()
       printf("%s | ", status_str[i]);
     }
   }
+  //dump(emu_cpu.reg_PC, 8);
   puts("");
 }
 
-void dump(uint16_t addr, int32_t size)
-{
-  int l,i;
-  printf("--- memory dump ---\n");
-  for(l = 0; l < size; l+=8){
-    printf("[0x%04x]: ", addr+l);
-    for(i = 0; i+l < size && i < 8; i++)
-      printf("%02x ", cpu_bus_read(addr+i+l));
-    puts("");
-  }
-}

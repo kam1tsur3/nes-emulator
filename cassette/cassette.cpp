@@ -34,5 +34,8 @@ void load_rom(char* file)
   read(nes, emu_rom.prg_rom, prg_size);
   read(nes, emu_rom.chr_rom, chr_size);
 
+  printf("prg_size: 0x%x\n", prg_size);
+  printf("chr_size: 0x%x\n", chr_size);
+
   return;
 }

@@ -24,6 +24,7 @@ extern struct rom emu_rom;
 
 extern uint8_t ppu_reg_read(uint16_t);
 extern void ppu_reg_write(uint16_t, uint8_t);
+extern void debug();
 
 uint8_t cpu_bus_read(uint16_t addr)
 {
@@ -31,7 +32,8 @@ uint8_t cpu_bus_read(uint16_t addr)
     return wram[addr];
   } 
   else if(addr <= WRAM_MIRROR_END){
-    ERROR("Not mapped WRAM_MIRROR");
+    printf("addr: %p\n", addr);
+    ERROR("CPU-BUS: Error Not mapped WRAM_MIRROR(R)");
   }
   else if (addr <= PPU_REGS_MIRROR_END){
     // PPU register
@@ -47,8 +49,10 @@ uint8_t cpu_bus_read(uint16_t addr)
     ERROR("Not mapped EXT_RAM");
   }
   else if (addr <= PRG_ROM2_END){
-    if(addr - PRG_ROM1_START > emu_rom.size_prg_rom)
+    if(addr - PRG_ROM1_START > emu_rom.size_prg_rom){
+      debug();
       ERROR("Invalid Access To PRG_ROM");
+    }
     return ((uint8_t*)emu_rom.prg_rom)[addr - PRG_ROM1_START];
   }
   return 0;
@@ -60,7 +64,7 @@ void cpu_bus_write(uint16_t addr, uint8_t val)
     wram[addr] = val;
   } 
   else if(addr <= WRAM_MIRROR_END){
-    ERROR("Not mapped WRAM_MIRROR");
+    ERROR("CPU-BUS: Error Not mapped WRAM_MIRROR(W)");
   }
   else if (addr <= PPU_REGS_MIRROR_END){
     // PPU register

@@ -46,10 +46,17 @@ uint8_t ppu_bus_read(uint16_t addr)
     ERROR("error in ppu_bus_read()");
   }
   else if (addr <= BACK_PLT_END) {
-    return emu_ppu.bg_palette[addr - BACK_PLT_START];
+    if(addr%4 == 0)
+      return emu_ppu.bg_palette[0];
+    else
+      return emu_ppu.bg_palette[addr - BACK_PLT_START];
   }
   else if (addr <= SPRT_PLT_END) {
-    return emu_ppu.sp_palette[addr - SPRT_PLT_START];
+    if(addr%4 == 0)
+      //return emu_ppu.bg_palette[addr - SPRT_PLT_START];
+      return emu_ppu.bg_palette[0];
+    else
+      return emu_ppu.sp_palette[addr - SPRT_PLT_START];
   }
   else {
     printf("addr 0x%04x\n",addr);
@@ -74,7 +81,10 @@ void ppu_bus_write(uint16_t addr, uint8_t val)
     emu_ppu.bg_palette[addr - BACK_PLT_START] = val;
   }
   else if (addr <= SPRT_PLT_END) {
-    emu_ppu.sp_palette[addr - SPRT_PLT_START] = val;
+    if(addr%4 == 0)
+      emu_ppu.bg_palette[addr - SPRT_PLT_START] = val;
+    else
+      emu_ppu.sp_palette[addr - SPRT_PLT_START] = val;
   }
   else {
     ERROR("error in ppu_bus_write()");

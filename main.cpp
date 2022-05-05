@@ -23,7 +23,9 @@ int main(int argc, char *argv[])
 
 	load_rom(argv[1]);
 	init_ppu();
-	reset();
+	init_regs();
+	//dump(0x8000, 0x100);
+	//reset();
 
 	std::thread cpu_thread(run);
 

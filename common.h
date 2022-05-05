@@ -36,8 +36,7 @@ struct cpu {
 struct ppu {
   uint8_t reg_ctrl1;
   uint8_t reg_ctrl2;
-  //uint8_t reg_sprite_addr;
-  //uint8_t reg_sprite_data;
+  uint8_t sprite_addr;
   uint16_t vram_addr;
   uint8_t vram_switch;
   uint8_t bg_palette[0x10];
