@@ -21,6 +21,8 @@
 
 extern uint8_t wram[MEMORY_SIZE];
 extern struct rom emu_rom;
+extern uint8_t buffer[8];
+uint8_t ctrl_pointer = 0;
 
 extern uint8_t ppu_reg_read(uint16_t);
 extern void ppu_reg_write(uint16_t, uint8_t);
@@ -40,6 +42,11 @@ uint8_t cpu_bus_read(uint16_t addr)
     return ppu_reg_read((addr - PPU_REGS_START)%8);
   }
   else if (addr <= APU_IO_PAD_END){
+    if(addr == 0x4016){
+      if(ctrl_pointer > 7)
+        ERROR("Invalid ctrl_pointer");
+      return buffer[ctrl_pointer++];
+    }
     ERROR("Not mapped APU_IO_PAD");
   }
   else if (addr <= EXT_ROM_END){
@@ -71,7 +78,17 @@ void cpu_bus_write(uint16_t addr, uint8_t val)
     ppu_reg_write((addr - PPU_REGS_START)%8, val);
   }
   else if (addr <= APU_IO_PAD_END){
-    ERROR("Not mapped APU_IO_PAD");
+    if(addr == 0x4016){
+      if(val&1)
+        ctrl_pointer = 0xff;
+      else {
+        if(ctrl_pointer != 0xff)
+          ERROR("Invalid controller usage");
+        ctrl_pointer = 0;
+      }
+    } 
+    else
+      ERROR("Not mapped APU_IO_PAD");
   }
   else if (addr <= EXT_ROM_END){
     ERROR("Not mapped EXT_ROM");

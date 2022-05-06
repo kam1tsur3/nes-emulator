@@ -14,6 +14,9 @@ extern void display_all();
 extern void interval_display(int);
 extern void init_ppu();
 
+extern void push_button(uint8_t, int, int);
+extern void unpush_button(uint8_t, int, int);
+
 int main(int argc, char *argv[])
 {
 	if(argc < 2){
@@ -36,6 +39,8 @@ int main(int argc, char *argv[])
   glutCreateWindow("NES Emulator");
   glutDisplayFunc(display_all);
   glutTimerFunc(16,interval_display,0);
+	glutKeyboardFunc(push_button);
+	glutKeyboardUpFunc(unpush_button);
   glutMainLoop();
 
 	ERROR("Program is ended");

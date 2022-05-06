@@ -28,10 +28,15 @@
 #define BACK_PLT_END        0x3F0F
 #define SPRT_PLT_START      0x3F10
 #define SPRT_PLT_END        0x3F1F
+#define PLT_MIRROR_START    0x3F20
+#define PLT_MIRROR_END      0x3FFF
 
 extern uint8_t vram[MEMORY_SIZE];
 extern struct rom emu_rom;
 extern struct ppu emu_ppu;
+
+extern void debug();
+extern void dump(uint16_t, int32_t);
 
 uint8_t ppu_bus_read(uint16_t addr)
 {
@@ -45,21 +50,38 @@ uint8_t ppu_bus_read(uint16_t addr)
     printf("addr 0x%04x\n",addr);
     ERROR("error in ppu_bus_read()");
   }
-  else if (addr <= BACK_PLT_END) {
-    if(addr%4 == 0)
-      return emu_ppu.bg_palette[0];
-    else
-      return emu_ppu.bg_palette[addr - BACK_PLT_START];
-  }
-  else if (addr <= SPRT_PLT_END) {
-    if(addr%4 == 0)
-      //return emu_ppu.bg_palette[addr - SPRT_PLT_START];
-      return emu_ppu.bg_palette[0];
-    else
-      return emu_ppu.sp_palette[addr - SPRT_PLT_START];
+  //else if (addr <= BACK_PLT_END) {
+  //  if(addr%4 == 0)
+  //    return emu_ppu.bg_palette[0];
+  //  else
+  //    return emu_ppu.bg_palette[addr - BACK_PLT_START];
+  //}
+  //else if (addr <= SPRT_PLT_END) {
+  //  if(addr%4 == 0)
+  //    //return emu_ppu.bg_palette[addr - SPRT_PLT_START];
+  //    return emu_ppu.bg_palette[0];
+  //  else
+  //    return emu_ppu.sp_palette[addr - SPRT_PLT_START];
+  //}
+  else if(addr <= PLT_MIRROR_END){
+    if(addr%0x20 < 0x10) {
+      if(addr%4 == 0)
+        return emu_ppu.bg_palette[0];
+      else
+        return emu_ppu.bg_palette[addr % 0x20];
+    }
+    else {
+      if(addr%4 == 0)
+        //return emu_ppu.bg_palette[addr - SPRT_PLT_START];
+        return emu_ppu.bg_palette[0];
+      else
+        return emu_ppu.sp_palette[(addr % 0x20)-0x10];
+    }
   }
   else {
-    printf("addr 0x%04x\n",addr);
+    printf("addr: %p\n", addr);
+    debug();
+    dump(0x8000, 0x100);
     ERROR("error in ppu_bus_read()");
   }
   return 0;

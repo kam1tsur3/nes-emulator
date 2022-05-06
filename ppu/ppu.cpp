@@ -76,7 +76,11 @@ uint8_t ppu_reg_read(uint16_t addr)
   uint8_t tmp;
   switch(addr) {
     case PPU_STATUS:
+       // TODO
+       return 0x80;
     case SPRT_DATA:
+       // TODO
+       return 0;
     case VRAM_DATA:
       tmp = ppu_bus_read(emu_ppu.vram_addr);
       inc_vram_addr();

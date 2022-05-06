@@ -1,4 +1,5 @@
 # NES-Emulator
+絶賛作成中
 
 ### TODO
 * PPUレジスタ未実装箇所
