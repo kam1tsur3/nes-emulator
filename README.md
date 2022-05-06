@@ -2,6 +2,10 @@
 絶賛作成中
 
 ### TODO
+* Makefileがカス
+現段階で開発環境がOSXなのだが
+リンク時にram.cppが末尾だとbus errorで頻繁に落ちる謎現象があるので、生で書いている。許してくれ。
+
 * PPUレジスタ未実装箇所
 0x2000 bit 5~7
 0x2001
@@ -10,8 +14,6 @@ ADC, SBCのcarry, overflowが少し不安
 CMPのフラグ設定テスト
 stack命令、spの操作が先かストア/ロードが先か
 RTI
-
-
 
 ### MITOsan
 　　　　　　　　　　　　　　　 _,,.. -─ ニ =‐--､  

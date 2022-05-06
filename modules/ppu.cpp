@@ -1,7 +1,8 @@
 #include "../common.h"
-#include "ppu.h"
+#include "header/ppu.h"
 #include <GLUT/glut.h>
 
+extern bool flag_nmi;
 
 extern uint8_t ppu_bus_read(uint16_t);
 extern void ppu_bus_write(uint16_t, uint8_t);
@@ -180,7 +181,7 @@ void map_background()
 
 void map_sprite()
 {
-  int i, idx_spr, idx_pal, x, y, tx, ty;
+  int i, idx_spr, idx_pal, x, y, tx, ty, px, py;
   uint8_t tmp_spr[8*8] = {0};
 
   for(i=0; i<SPRITE_MAX; i+=4){
@@ -196,8 +197,14 @@ void map_sprite()
     
     for(ty=y; ty < y+8; ty++){
       for(tx=x; tx < x+8; tx++){
+        px = tx;
+        py = ty;
+        if(sprite_ram[i+2]&0x40)
+          px = x+7-(tx-x);
+        if(sprite_ram[i+2]&0x80)
+          py = y+7-(ty-y);
         //map_point(emu_ppu.sp_palette[idx_pal*4+tmp_spr[(tx-x)+(ty-y)*8]], tx, ty);
-        map_point(ppu_bus_read(0x3F10+idx_pal*4+tmp_spr[(tx-x)+(ty-y)*8]), tx, ty);
+        map_point(ppu_bus_read(0x3F10+idx_pal*4+tmp_spr[(tx-x)+(ty-y)*8]), px, py);
       }
     }
   } 
@@ -212,5 +219,7 @@ void interval_display(int val)
   
   glutPostRedisplay();
   glutTimerFunc(16,interval_display,0);
+  if(emu_ppu.reg_ctrl1 & MASK_NMI)
+    flag_nmi = true;    
 }
 

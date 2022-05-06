@@ -28,6 +28,8 @@ extern uint8_t ppu_reg_read(uint16_t);
 extern void ppu_reg_write(uint16_t, uint8_t);
 extern void debug();
 
+extern void dma(uint8_t);
+
 uint8_t cpu_bus_read(uint16_t addr)
 {
   if(addr <= WRAM_END){
@@ -56,11 +58,7 @@ uint8_t cpu_bus_read(uint16_t addr)
     ERROR("Not mapped EXT_RAM");
   }
   else if (addr <= PRG_ROM2_END){
-    if(addr - PRG_ROM1_START > emu_rom.size_prg_rom){
-      debug();
-      ERROR("Invalid Access To PRG_ROM");
-    }
-    return ((uint8_t*)emu_rom.prg_rom)[addr - PRG_ROM1_START];
+    return ((uint8_t*)emu_rom.prg_rom)[addr%0x4000];
   }
   return 0;
 }
@@ -78,17 +76,34 @@ void cpu_bus_write(uint16_t addr, uint8_t val)
     ppu_reg_write((addr - PPU_REGS_START)%8, val);
   }
   else if (addr <= APU_IO_PAD_END){
-    if(addr == 0x4016){
-      if(val&1)
-        ctrl_pointer = 0xff;
-      else {
-        if(ctrl_pointer != 0xff)
-          ERROR("Invalid controller usage");
-        ctrl_pointer = 0;
-      }
-    } 
-    else
-      ERROR("Not mapped APU_IO_PAD");
+    switch(addr){
+      case 0x4014:
+        // dma
+        dma(val);
+        break;
+      case 0x4016:
+        if(val&1)
+          ctrl_pointer = 0xff;
+        else {
+          if(ctrl_pointer != 0xff)
+            ERROR("Invalid controller usage");
+          ctrl_pointer = 0;
+        }
+        break;
+      default:
+        ERROR("Not mapped APU_IO_PAD");
+    }
+    //if(addr == 0x4016){
+    //  if(val&1)
+    //    ctrl_pointer = 0xff;
+    //  else {
+    //    if(ctrl_pointer != 0xff)
+    //      ERROR("Invalid controller usage");
+    //    ctrl_pointer = 0;
+    //  }
+    //} 
+    //else
+    //  ERROR("Not mapped APU_IO_PAD");
   }
   else if (addr <= EXT_ROM_END){
     ERROR("Not mapped EXT_ROM");

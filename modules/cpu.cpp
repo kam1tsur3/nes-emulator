@@ -1,5 +1,5 @@
 #include "../common.h"
-#include "cpu.h"
+#include "header/cpu.h"
 
 // extern functions
 extern uint8_t cpu_bus_read(uint16_t);
@@ -8,6 +8,7 @@ extern uint16_t cpu_bus_read_word(uint16_t);
 
 // global variable
 struct cpu emu_cpu;
+bool flag_nmi = 0;
 
 void init_regs()
 {
@@ -116,6 +117,17 @@ void push_SP(uint8_t val)
   emu_cpu.reg_SP = ((emu_cpu.reg_SP - 1) & 0xff) | 0x100;
 }
 
+void nmi()
+{
+  set_reg_P(STATUS_B,false);
+  push_SP(emu_cpu.reg_PC >> 8);
+  push_SP(emu_cpu.reg_PC&0xff);
+  push_SP(emu_cpu.reg_P);
+  set_reg_P(STATUS_I,true);
+  emu_cpu.reg_PC = cpu_bus_read_word(VEC_NMI);
+  flag_nmi = false;
+}
+
 uint16_t get_operand(uint8_t op)
 {
   uint16_t upper, lower, tmp_pc;
@@ -160,6 +172,7 @@ uint16_t get_operand(uint8_t op)
       //return *(uint16_t*)&(emu_cpu.memory[lower | upper]);
     case AM_UNDF:
     default:
+      debug();
       ERROR("Undefined addressing mode")
       break;
   }
@@ -548,6 +561,9 @@ void run()
   //for(tmp=0;tmp<2;tmp++) {
   //  debug();
   while(1){
+    if(flag_nmi){
+      nmi();
+    }
     op = fetch();
     operand = get_operand(op);
     exec(op, operand);

@@ -1,5 +1,5 @@
 #include "../common.h"
-#include "cassette.h"
+#include "header/cassette.h"
 
 struct rom emu_rom;
 
