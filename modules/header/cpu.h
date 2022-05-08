@@ -15,6 +15,7 @@
 #define STATUS_R    5
 #define STATUS_V    6 
 #define STATUS_N    7 
+
 const char* status_str[8] = 
 {"CARRY", "ZERO", "INTERRUPT", "DECIMAL", "UNUSED", "BREAK", "OVERFLOW", "NEGATIVE"};
 
@@ -22,7 +23,6 @@ const char* status_str[8] =
 #define VEC_RESET   0xFFFC
 #define VEC_IRQ     0xFFFE
 #define VEC_BRK     0xFFFE
-
 
 // addressing mode
 #define AM_IMPL            0
@@ -99,7 +99,6 @@ const char* status_str[8] =
 #define OP_NOP             55
 #define OP_UND             0xff
 
-
 const uint8_t AM[0x100] = { 
 /* 0x00 */ AM_IMPL, AM_XIND, AM_UNDF, AM_UNDF, AM_UNDF,  AM_ZPG,  AM_ZPG, AM_UNDF,
 /* 0x08 */ AM_IMPL, AM_IMMD, AM_ACCM, AM_UNDF, AM_UNDF,  AM_ABS,  AM_ABS, AM_UNDF,
@@ -168,6 +167,25 @@ const uint8_t OPCODE[0x100] = {
 /* 0xE8 */ OP_INX, OP_SBC, OP_NOP, OP_UND, OP_CPX, OP_SBC, OP_INC, OP_UND,
 /* 0xF0 */ OP_BEQ, OP_SBC, OP_UND, OP_UND, OP_UND, OP_SBC, OP_INC, OP_UND,
 /* 0xF8 */ OP_SED, OP_SBC, OP_UND, OP_UND, OP_UND, OP_SBC, OP_INC, OP_UND
+};
+
+const uint8_t cycles[0x100] = {
+  /* 0x00 */ 7, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
+  /* 0x10 */ 2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 6, 7,
+  /* 0x20 */ 6, 6, 2, 8, 3, 3, 5, 5, 4, 2, 2, 2, 4, 4, 6, 6,
+  /* 0x30 */ 2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 6, 7,
+  /* 0x40 */ 6, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 3, 4, 6, 6,
+  /* 0x50 */ 2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 6, 7,
+  /* 0x60 */ 6, 6, 2, 8, 3, 3, 5, 5, 4, 2, 2, 2, 5, 4, 6, 6,
+  /* 0x70 */ 2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 6, 7,
+  /* 0x80 */ 2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4,
+  /* 0x90 */ 2, 6, 2, 6, 4, 4, 4, 4, 2, 4, 2, 5, 5, 4, 5, 5,
+  /* 0xA0 */ 2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4,
+  /* 0xB0 */ 2, 5, 2, 5, 4, 4, 4, 4, 2, 4, 2, 4, 4, 4, 4, 4,
+  /* 0xC0 */ 2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6,
+  /* 0xD0 */ 2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
+  /* 0xE0 */ 2, 6, 3, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6,
+  /* 0xF0 */ 2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
 };
 
 void init_cpu();

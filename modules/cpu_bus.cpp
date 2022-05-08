@@ -19,6 +19,29 @@
 #define PRG_ROM2_START             0xC000
 #define PRG_ROM2_END               0xFFFF
 
+#define IO_SQ1_CTRL1      0x4000
+#define IO_SQ1_CTRL2      0x4001
+#define IO_SQ1_FREQ1      0x4002
+#define IO_SQ1_FREQ2      0x4003
+#define IO_SQ2_CTRL1      0x4004
+#define IO_SQ2_CTRL2      0x4005
+#define IO_SQ2_FREQ1      0x4006
+#define IO_SQ2_FREQ2      0x4007
+#define IO_TRI_CTRL       0x4008
+#define IO_TRI_FREQ1      0x400A
+#define IO_TRI_FREQ2      0x400B
+#define IO_NOISE_CTRL     0x400C
+#define IO_NOISE_FREQ1    0x400E
+#define IO_NOISE_FREQ2    0x400F
+#define IO_DMC_CTRL1      0x4010
+#define IO_DMC_CTRL2      0x4011
+#define IO_DMC_ADDR       0x4012
+#define IO_DMC_DATA_LEN   0x4013
+#define IO_DMA            0x4014
+#define IO_AUDIO_ENABLE   0x4015
+#define IO_1P_PAD         0x4016
+#define IO_2P_PAD         0x4017
+
 extern uint8_t wram[MEMORY_SIZE];
 extern struct rom emu_rom;
 extern uint8_t buffer[8];
@@ -77,11 +100,34 @@ void cpu_bus_write(uint16_t addr, uint8_t val)
   }
   else if (addr <= APU_IO_PAD_END){
     switch(addr){
-      case 0x4014:
+      case IO_SQ1_CTRL1:   
+      case IO_SQ1_CTRL2:   
+      case IO_SQ1_FREQ1:   
+      case IO_SQ1_FREQ2:   
+      case IO_SQ2_CTRL1:   
+      case IO_SQ2_CTRL2:   
+      case IO_SQ2_FREQ1:   
+      case IO_SQ2_FREQ2:   
+      case IO_TRI_CTRL:    
+      case IO_TRI_FREQ1:   
+      case IO_TRI_FREQ2:   
+      case IO_NOISE_CTRL:  
+      case IO_NOISE_FREQ1: 
+      case IO_NOISE_FREQ2: 
+      case IO_DMC_CTRL1:   
+      case IO_DMC_CTRL2:   
+      case IO_DMC_ADDR:    
+      case IO_DMC_DATA_LEN:
+        // TODO
+        break;
+      case IO_DMA:
         // dma
         dma(val);
         break;
-      case 0x4016:
+      case IO_AUDIO_ENABLE:
+        // TODO
+        break;
+      case IO_1P_PAD:
         if(val&1)
           ctrl_pointer = 0xff;
         else {

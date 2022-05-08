@@ -50,19 +50,6 @@ uint8_t ppu_bus_read(uint16_t addr)
     printf("addr 0x%04x\n",addr);
     ERROR("error in ppu_bus_read()");
   }
-  //else if (addr <= BACK_PLT_END) {
-  //  if(addr%4 == 0)
-  //    return emu_ppu.bg_palette[0];
-  //  else
-  //    return emu_ppu.bg_palette[addr - BACK_PLT_START];
-  //}
-  //else if (addr <= SPRT_PLT_END) {
-  //  if(addr%4 == 0)
-  //    //return emu_ppu.bg_palette[addr - SPRT_PLT_START];
-  //    return emu_ppu.bg_palette[0];
-  //  else
-  //    return emu_ppu.sp_palette[addr - SPRT_PLT_START];
-  //}
   else if(addr <= PLT_MIRROR_END){
     if(addr%0x20 < 0x10) {
       if(addr%4 == 0)

@@ -15,6 +15,11 @@ void init_ppu()
 {
   int i;
   emu_ppu.vram_switch = 1;
+  emu_ppu.reg_status = 0;
+  emu_ppu.flag_xy = 0;
+  emu_ppu.scroll_x = 0;
+  emu_ppu.scroll_y = 0;
+
   for(i = 0; i < WIDTH_DISPLAY*HEIGHT_DISPLAY; i+=4){
     bitmap[i+3] = 255;
   }
@@ -57,6 +62,11 @@ void ppu_reg_write(uint16_t addr, uint8_t val)
       break;
     case PPU_SCROLL:
       // not implemented
+      if(emu_ppu.flag_xy == 0)
+        emu_ppu.scroll_x = val;
+      else 
+        emu_ppu.scroll_y = val;
+      emu_ppu.flag_xy ^= 1;
       break;
     case VRAM_ADDR:
       emu_ppu.vram_addr = (emu_ppu.vram_addr & 0xff<<(8*(emu_ppu.vram_switch^1))) | (val << (8*emu_ppu.vram_switch));
@@ -78,10 +88,9 @@ uint8_t ppu_reg_read(uint16_t addr)
   switch(addr) {
     case PPU_STATUS:
        // TODO
-       return 0x80;
-    case SPRT_DATA:
-       // TODO
-       return 0;
+       emu_ppu.flag_xy = 0;
+       //emu_ppu.reg_status &= 0x7f; //なぜかx
+       return emu_ppu.reg_status;
     case VRAM_DATA:
       tmp = ppu_bus_read(emu_ppu.vram_addr);
       inc_vram_addr();
@@ -132,11 +141,13 @@ uint8_t xy_to_palette(int x, int y)
   return (tb >> (2*idx)) & 0x3;
 }
 
-void map_point(uint8_t color_idx, int x, int y)
+void map_point(uint8_t color_idx, uint8_t x, uint8_t y)
 {
-  bitmap[((HEIGHT_DISPLAY-y-1)*WIDTH_DISPLAY+x)*4+0] = base_color[color_idx][0];
-  bitmap[((HEIGHT_DISPLAY-y-1)*WIDTH_DISPLAY+x)*4+1] = base_color[color_idx][1];
-  bitmap[((HEIGHT_DISPLAY-y-1)*WIDTH_DISPLAY+x)*4+2] = base_color[color_idx][2];
+  uint32_t base;
+  base = ((HEIGHT_DISPLAY-y-1)*WIDTH_DISPLAY+x);
+  bitmap[base*4+0] = base_color[color_idx][0];
+  bitmap[base*4+1] = base_color[color_idx][1];
+  bitmap[base*4+2] = base_color[color_idx][2];
 }
 
 //void display_line(int y)
@@ -171,8 +182,7 @@ void map_background()
       idx_pal = xy_to_palette(x,y);
       for(ty=y; ty<(y+8); ty++){
         for(tx=x; tx<(x+8); tx++){
-          //map_point(emu_ppu.bg_palette[idx_pal*4+tmp_spr[(tx-x)+(ty-y)*8]], tx, ty);
-          map_point(ppu_bus_read(0x3F00+idx_pal*4+tmp_spr[(tx-x)+(ty-y)*8]), tx, ty);
+          map_point(ppu_bus_read(0x3F00+idx_pal*4+tmp_spr[(tx-x)+(ty-y)*8]), (tx-emu_ppu.scroll_x)%WIDTH_DISPLAY, (ty-emu_ppu.scroll_y)%HEIGHT_DISPLAY);
         }
       }
     }
@@ -181,10 +191,11 @@ void map_background()
 
 void map_sprite()
 {
-  int i, idx_spr, idx_pal, x, y, tx, ty, px, py;
+  uint32_t i, idx_spr, idx_pal, x, y, tx, ty, px, py;
   uint8_t tmp_spr[8*8] = {0};
 
   for(i=0; i<SPRITE_MAX; i+=4){
+  //for(i=0; i<8; i+=4){
     if(sprite_ram[i+2] & 0x20){
       continue;
     }
@@ -204,7 +215,9 @@ void map_sprite()
         if(sprite_ram[i+2]&0x80)
           py = y+7-(ty-y);
         //map_point(emu_ppu.sp_palette[idx_pal*4+tmp_spr[(tx-x)+(ty-y)*8]], tx, ty);
-        map_point(ppu_bus_read(0x3F10+idx_pal*4+tmp_spr[(tx-x)+(ty-y)*8]), px, py);
+        if(tmp_spr[(tx-x)+(ty-y)*8] == 0) // skip 0x3F10, 0x3F14, 0x3F18, 0x3F1C
+          continue;
+        map_point(ppu_bus_read(0x3F10+idx_pal*4+tmp_spr[(tx-x)+(ty-y)*8]), px%WIDTH_DISPLAY, py%HEIGHT_DISPLAY);
       }
     }
   } 
@@ -218,8 +231,10 @@ void interval_display(int val)
   map_sprite(); 
   
   glutPostRedisplay();
-  glutTimerFunc(16,interval_display,0);
+  glutTimerFunc(10,interval_display,0);
+  // VBlank
   if(emu_ppu.reg_ctrl1 & MASK_NMI)
     flag_nmi = true;    
+  emu_ppu.reg_status |= 0x80;
 }
 

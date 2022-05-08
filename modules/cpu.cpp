@@ -552,14 +552,13 @@ void exec(uint8_t op, uint16_t operand)
 
 void run()
 {
+  clock_t start, end = 0;
   int tmp;
   uint8_t op;
   uint16_t operand;
   
   puts("execution");
 
-  //for(tmp=0;tmp<2;tmp++) {
-  //  debug();
   while(1){
     if(flag_nmi){
       nmi();
