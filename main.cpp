@@ -17,6 +17,9 @@ extern void init_ppu();
 extern void push_button(uint8_t, int, int);
 extern void unpush_button(uint8_t, int, int);
 
+extern void audio_init();
+extern void audio_update();
+
 int main(int argc, char *argv[])
 {
 	if(argc < 2){
@@ -27,10 +30,12 @@ int main(int argc, char *argv[])
 	load_rom(argv[1]);
 	init_ppu();
 	init_regs();
+	audio_init();
 	//dump(0x8000, 0x100);
 	//reset();
 
 	std::thread cpu_thread(run);
+	std::thread apu_thread(audio_update);
 
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_SINGLE | GLUT_RGBA);

@@ -40,10 +40,12 @@
 #define IO_DMA            0x4014
 #define IO_AUDIO_ENABLE   0x4015
 #define IO_1P_PAD         0x4016
-#define IO_2P_PAD         0x4017
+#define IO_AUDIO_FRAME    0x4017
+//#define IO_2P_PAD         0x4017
 
 extern uint8_t wram[MEMORY_SIZE];
 extern struct rom emu_rom;
+extern struct apu emu_apu;
 extern uint8_t buffer[8];
 uint8_t ctrl_pointer = 0;
 
@@ -52,6 +54,13 @@ extern void ppu_reg_write(uint16_t, uint8_t);
 extern void debug();
 
 extern void dma(uint8_t);
+
+extern void audio_switch(uint8_t);
+extern void audio_set_ctrl1(uint8_t, uint8_t);
+extern void audio_set_ctrl2(uint8_t, uint8_t);
+extern void audio_set_freq1(uint8_t, uint8_t);
+extern void audio_set_freq2(uint8_t, uint8_t);
+extern void audio_set_mode(uint8_t);
 
 uint8_t cpu_bus_read(uint16_t addr)
 {
@@ -67,12 +76,17 @@ uint8_t cpu_bus_read(uint16_t addr)
     return ppu_reg_read((addr - PPU_REGS_START)%8);
   }
   else if (addr <= APU_IO_PAD_END){
-    if(addr == 0x4016){
-      if(ctrl_pointer > 7)
-        ERROR("Invalid ctrl_pointer");
-      return buffer[ctrl_pointer++];
+    switch(addr){
+      case IO_AUDIO_ENABLE:
+        return emu_apu.reg_sound;
+      case IO_1P_PAD:
+        if(ctrl_pointer > 7)
+          ERROR("Invalid ctrl_pointer");
+        return buffer[ctrl_pointer++];
+        break;
+      default:
+        ERROR("Not mapped APU_IO_PAD");
     }
-    ERROR("Not mapped APU_IO_PAD");
   }
   else if (addr <= EXT_ROM_END){
     ERROR("Not mapped EXT_ROM");
@@ -101,13 +115,29 @@ void cpu_bus_write(uint16_t addr, uint8_t val)
   else if (addr <= APU_IO_PAD_END){
     switch(addr){
       case IO_SQ1_CTRL1:   
+        audio_set_ctrl1(0, val);      
+        break;
       case IO_SQ1_CTRL2:   
+        audio_set_ctrl2(0, val);      
+        break;
       case IO_SQ1_FREQ1:   
+        audio_set_freq1(0, val);      
+        break;
       case IO_SQ1_FREQ2:   
+        audio_set_freq2(0, val);      
+        break;
       case IO_SQ2_CTRL1:   
+        audio_set_ctrl1(1, val);      
+        break;
       case IO_SQ2_CTRL2:   
+        audio_set_ctrl2(1, val);      
+        break;
       case IO_SQ2_FREQ1:   
+        audio_set_freq1(1, val);      
+        break;
       case IO_SQ2_FREQ2:   
+        audio_set_freq2(1, val);      
+        break;
       case IO_TRI_CTRL:    
       case IO_TRI_FREQ1:   
       case IO_TRI_FREQ2:   
@@ -125,7 +155,8 @@ void cpu_bus_write(uint16_t addr, uint8_t val)
         dma(val);
         break;
       case IO_AUDIO_ENABLE:
-        // TODO
+        audio_switch(val);
+        emu_apu.reg_sound = val;
         break;
       case IO_1P_PAD:
         if(val&1)
@@ -136,20 +167,12 @@ void cpu_bus_write(uint16_t addr, uint8_t val)
           ctrl_pointer = 0;
         }
         break;
+      case IO_AUDIO_FRAME:
+        audio_set_mode(val);
+        break;
       default:
         ERROR("Not mapped APU_IO_PAD");
     }
-    //if(addr == 0x4016){
-    //  if(val&1)
-    //    ctrl_pointer = 0xff;
-    //  else {
-    //    if(ctrl_pointer != 0xff)
-    //      ERROR("Invalid controller usage");
-    //    ctrl_pointer = 0;
-    //  }
-    //} 
-    //else
-    //  ERROR("Not mapped APU_IO_PAD");
   }
   else if (addr <= EXT_ROM_END){
     ERROR("Not mapped EXT_ROM");

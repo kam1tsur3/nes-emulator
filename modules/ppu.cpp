@@ -231,7 +231,7 @@ void interval_display(int val)
   map_sprite(); 
   
   glutPostRedisplay();
-  glutTimerFunc(10,interval_display,0);
+  glutTimerFunc(16,interval_display,0);
   // VBlank
   if(emu_ppu.reg_ctrl1 & MASK_NMI)
     flag_nmi = true;    

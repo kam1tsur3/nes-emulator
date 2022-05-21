@@ -1,6 +1,7 @@
 CC	= g++
 LIBS	= -lpthread
 OPENGL	= -framework GLUT -framework OpenGL
+OPENAL	= -framework OpenAL
 TARGET	= emulator
 
 SOURCESDIR	=	./modules
@@ -10,7 +11,7 @@ OBJS	=	$(SOURCES:.cpp=.o)
 all:	clean $(TARGET)
 
 $(TARGET):	main.cpp $(SOURCES)
-	$(CC) $(LIBS) main.cpp ./modules/cassette.cpp ./modules/controller.cpp ./modules/cpu.cpp ./modules/cpu_bus.cpp ./modules/ppu_bus.cpp ./modules/ram.cpp ./modules/ppu.cpp ./modules/dma.cpp -o $(TARGET) $(OPENGL)
+	$(CC) $(LIBS) main.cpp ./modules/cassette.cpp ./modules/controller.cpp ./modules/cpu.cpp ./modules/cpu_bus.cpp ./modules/ppu_bus.cpp ./modules/ram.cpp ./modules/ppu.cpp ./modules/dma.cpp ./modules/apu.cpp -o $(TARGET) $(OPENGL) $(OPENAL)
 
 #$(TARGET):	main.o $(OBJS)
 #	$(CC) main.o $(OBJS) $(LIBS) $(OPENGL) -o $(TARGET)

@@ -1,15 +1,15 @@
+#include <cstdint>
+#include <thread>
+#include <chrono>
+#include <iostream>
 #include <stdio.h>
 #include <fcntl.h>
 #include <stdlib.h>
+
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <unistd.h>
 #include <string.h>
-#include <cstdint>
-#include <pthread.h>
-#include <thread>
-#include <time.h>
-#include <sys/time.h>
 
 
 #define MEMORY_SIZE				0x10000
@@ -48,4 +48,8 @@ struct ppu {
   uint8_t vram_switch;
   uint8_t bg_palette[0x10];
   uint8_t sp_palette[0x10];
+};
+
+struct apu {
+	uint8_t reg_sound; // 0x4015
 };
