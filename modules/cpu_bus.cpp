@@ -61,6 +61,7 @@ extern void audio_set_ctrl2(uint8_t, uint8_t);
 extern void audio_set_freq1(uint8_t, uint8_t);
 extern void audio_set_freq2(uint8_t, uint8_t);
 extern void audio_set_mode(uint8_t);
+extern void audio_set_triangle(uint8_t);
 
 uint8_t cpu_bus_read(uint16_t addr)
 {
@@ -138,9 +139,14 @@ void cpu_bus_write(uint16_t addr, uint8_t val)
       case IO_SQ2_FREQ2:   
         audio_set_freq2(1, val);      
         break;
-      case IO_TRI_CTRL:    
+      case IO_TRI_CTRL:
+        audio_set_triangle(val);    
       case IO_TRI_FREQ1:   
+        audio_set_freq1(2, val);      
+        break;
       case IO_TRI_FREQ2:   
+        audio_set_freq2(2, val);      
+        break;
       case IO_NOISE_CTRL:  
       case IO_NOISE_FREQ1: 
       case IO_NOISE_FREQ2: 

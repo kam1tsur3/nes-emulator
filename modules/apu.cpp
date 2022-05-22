@@ -87,6 +87,8 @@ struct channel {
   //
   uint16_t freq;
   uint8_t timer;
+  // triangle
+  uint8_t liner_timer;
 
   bool swt;
   ALuint sid;
@@ -203,10 +205,16 @@ void audio_set_freq2(uint8_t ch, uint8_t val)
   return;
 }
 
+void audio_set_triangle(uint8_t val)
+{
+  channels[CHANNEL_TRI].liner_timer = val & 0x7f;
+  channels[CHANNEL_TRI].flag_loop = (val & 0x80) ? false : true;
+}
+
 void update_timer_sweep()
 {
   int i;
-  for(i = 0; i < MAX_CHANNEL; i++){
+  for(i = 0; i < CHANNEL_SQ2+1; i++){
     /* timer */
     if(channels[i].flag_loop){
       channels[i].timer--;
@@ -234,12 +242,27 @@ void update_timer_sweep()
       audio_stop(i);
     }
   }
+  /* trinagle */
+  if(channels[CHANNEL_TRI].liner_timer > 0)
+    channels[CHANNEL_TRI].liner_timer--;
+  
+  if(channels[CHANNEL_TRI].flag_loop){
+    if(channels[CHANNEL_TRI].timer > 0)
+      channels[CHANNEL_TRI].timer--;
+  }
+  else 
+    channels[CHANNEL_TRI].timer = 0;
+
+  if(channels[CHANNEL_TRI].timer == 0 && channels[CHANNEL_TRI].liner_timer == 0){
+    channels[CHANNEL_TRI].flag_loop = false;
+    audio_stop(CHANNEL_TRI);
+  }
 }
 
 void update_envelope()
 {
   int i;
-  for(i = 0; i < MAX_CHANNEL; i++){
+  for(i = 0; i < CHANNEL_SQ2+1; i++){
     /* decay */
     if(channels[i].flag_decay){
       channels[i].decay_cnt++;
