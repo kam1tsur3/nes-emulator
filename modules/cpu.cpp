@@ -173,6 +173,8 @@ uint16_t get_operand(uint8_t op)
     case AM_UNDF:
     default:
       debug();
+      printf("%x\n", op);
+      dump(emu_cpu.reg_PC-1, 8);
       ERROR("Undefined addressing mode")
       break;
   }
@@ -543,6 +545,65 @@ void exec(uint8_t op, uint16_t operand)
       emu_cpu.reg_P = pop_SP();
       break;
     case OP_NOP:
+    /* unofficial operation */
+    case OP_DOP:
+    case OP_TOP:
+      break;
+    case OP_AAC:
+      tmp_m = (uint8_t)operand & emu_cpu.reg_A;
+      set_reg_P(STATUS_N, tmp_m & 0x80);
+      set_reg_P(STATUS_Z, tmp_m == 0);
+      set_reg_P(STATUS_C, tmp_m & 0x80);
+      break;
+    case OP_AAX:
+      tmp_m = emu_cpu.reg_X & emu_cpu.reg_A;
+      set_reg_P(STATUS_N, tmp_m & 0x80);
+      set_reg_P(STATUS_Z, tmp_m == 0);
+      cpu_bus_write(operand, tmp_m);
+      break;
+    case OP_ARR:
+      tmp_m = ((uint8_t)operand & emu_cpu.reg_A);
+      tmp_m = ((tmp_m & 0x1)<<7) | tmp_m >> 1;
+      emu_cpu.reg_A = tmp_m;
+      if((tmp_m & 0x60) == 0x60){
+        set_reg_P(STATUS_C, true);
+        set_reg_P(STATUS_V, false);
+      } else if((tmp_m & 0x60) == 0x0){
+        set_reg_P(STATUS_C, false);
+        set_reg_P(STATUS_V, false);
+      } else if((tmp_m & 0x60) == 0x20){
+        set_reg_P(STATUS_C, false);
+        set_reg_P(STATUS_V, true);
+      } else {
+        set_reg_P(STATUS_C, true);
+        set_reg_P(STATUS_V, true);
+      }
+      set_reg_P(STATUS_N, tmp_m & 0x80);
+      set_reg_P(STATUS_Z, tmp_m == 0);
+      break;
+    case OP_ASR:
+      tmp_m = ((uint8_t)operand & emu_cpu.reg_A); 
+      set_reg_P(STATUS_C, tmp_m & 0x1);
+      emu_cpu.reg_A >>= 1;
+      set_reg_P(STATUS_N, emu_cpu.reg_A & 0x80);   
+      set_reg_P(STATUS_Z, emu_cpu.reg_A == 0);   
+      break;
+    case OP_ATX:
+    case OP_AXA:
+    case OP_AXS:
+    case OP_DCP:
+    case OP_ISC:
+    case OP_KIL:
+    case OP_LAR:
+    case OP_LAX:
+    case OP_RLA:
+    case OP_RRA:
+    case OP_SLO:
+    case OP_SRE:
+    case OP_SXA:
+    case OP_SYA:
+    case OP_XAA:
+    case OP_XAS:
       break;
     case OP_UND:
       ERROR("Undefined Operation");
